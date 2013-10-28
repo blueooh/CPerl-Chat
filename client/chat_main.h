@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#define SERVER_ADDRESS "172.30.4.150"
+#define SERVER_ADDRESS "172.30.0.104"
 #define SERVER_PORT "8888"
 #define MESSAGE_BUFFER_SIZE 256
 #define ID_SIZE 50
@@ -16,6 +16,7 @@ enum {
     MSG_ALAM_STATE = 0,
     MSG_DATA_STATE,
     MSG_NEWUSER_STATE,
+    MSG_DELUSER_STATE,
 };
 
 typedef struct msg_node {
@@ -66,3 +67,4 @@ void *rcv_thread(void *data);
 void exit_error(char* err_msg);
 void connect_server();
 void disconnect_server();
+void delete_ulist(ulist *lptr, char *key);

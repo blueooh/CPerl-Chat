@@ -19,6 +19,7 @@ enum {
     MSG_ALAM_STATE = 0,
     MSG_DATA_STATE,
     MSG_NEWUSER_STATE,
+    MSG_DELUSER_STATE,
 };
 
 typedef struct user_data {
@@ -72,6 +73,37 @@ void insert_ulist(ulist *lptr, ud data)
     }
 
     lptr->count++;
+}
+
+void delete_ulist(ulist *lptr, int key)
+{
+    p_unode cnode = lptr->head, tnode;
+
+    while(cnode) {
+	if(cnode->usr_data.sock == key) {
+	    if(!cnode->prev) {
+		if(!cnode->next) {
+		    lptr->head = NULL;
+		    lptr->tail = NULL;
+		} else {
+		    lptr->head = lptr->tail = cnode->next;
+		    cnode->next->prev = NULL;
+		}
+	    } else {
+		if(!cnode->next) {
+		    cnode->prev->next = NULL;
+		    lptr->tail = cnode->prev;
+		} else {
+		    cnode->next->prev = cnode->prev;
+		    cnode->prev->next = cnode->next;
+		}
+	    }
+	    lptr->count--;
+	    free(cnode);
+	    return;
+	}
+	cnode = cnode->next;
+    }
 }
 
 int main(int argc, char **argv)
@@ -170,7 +202,23 @@ int main(int argc, char **argv)
 		readn = read(events[i].data.fd, (char *)&ms, 1024);
 		if (readn <= 0)
 		{
+		    p_unode cnode = user_list->head;
+		    ms.state = MSG_DELUSER_STATE;
+		    while(cnode) {
+			if(cnode->usr_data.sock == events[i].data.fd) {
+			    strcpy(ms.id, cnode->usr_data.id);
+			    break;
+			}
+			cnode = cnode->next;
+		    }
+		    delete_ulist(user_list, events[i].data.fd);
 		    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, events);
+		    
+		    cnode = user_list->head;
+		    while(cnode) {
+			write(cnode->usr_data.sock, (char *)&ms, sizeof(msgst));
+			cnode = cnode->next;
+		    }
 		    close(events[i].data.fd);
 		    //printf("Close fd\n", cfd);
 		}

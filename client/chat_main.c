@@ -148,13 +148,14 @@ void *rcv_thread(void *data) {
 		wrefresh(ulist_win);
 		insert_ulist(user_list, ms.id);
 		update_ulist_win(user_list);
-		move(LINES - 2, 2);
 		refresh();
 		continue;
+	    case MSG_DELUSER_STATE:
+		delete_ulist(user_list, ms.id);
+		update_ulist_win(user_list);
 	}
 	insert_mlist(message_list, message_buf);
 	update_show_win(message_list);
-	move(LINES - 2, 2);
 	refresh();
     }
 }
@@ -212,6 +213,38 @@ void clear_ulist(ulist *lptr)
 	printw("Oops!! Memory leak!!\n");
 	refresh();
     }
+}
+
+void delete_ulist(ulist *lptr, char *key)
+{
+    p_unode cnode = lptr->head, tnode;
+
+    while(cnode) {
+	if(!strcmp(cnode->id, key)) {
+	    if(!cnode->prev) {
+		if(!cnode->next) {
+		    lptr->head = NULL;
+		    lptr->tail = NULL;
+		} else {
+		    lptr->head = lptr->tail = cnode->next;
+		    cnode->next->prev = NULL;
+		}
+	    } else {
+		if(!cnode->next) {
+		    cnode->prev->next = NULL;
+		    lptr->tail = cnode->prev;
+		} else {
+		    cnode->next->prev = cnode->prev;
+		    cnode->prev->next = cnode->next;
+		}
+	    }
+	    lptr->count--;
+	    free(cnode);
+	    return;
+	}
+	cnode = cnode->next;
+    }
+
 }
 
 void init_mlist(mlist *lptr)
