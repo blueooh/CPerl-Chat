@@ -45,9 +45,7 @@ int main(int argc, char *argv[])
 	if(!strcmp("/connect", str)) {
 	    connect_server();
 	    ms.state = MSG_NEWUSER_STATE;
-	    write(sock, (char *)&ms, sizeof(msgst));
-	    continue;
-	} if(!strcmp("/disconnect", str)) {
+	} else if(!strcmp("/disconnect", str)) {
 	    disconnect_server();
 	    clear_ulist(user_list);
 	    update_ulist_win(user_list);
@@ -64,10 +62,11 @@ int main(int argc, char *argv[])
 	} else if(!strlen(str)) {
 	    move(LINES - 2, 2);
 	    continue;
+	} else {
+	    ms.state = MSG_DATA_STATE;
 	}
 
 	if(sock) {
-	    ms.state = MSG_DATA_STATE;
 	    memset(ms.message, 0x0, MESSAGE_BUFFER_SIZE); 
 	    memcpy(ms.message, str, strlen(str));
 	    write(sock, (char *)&ms, sizeof(msgst));
