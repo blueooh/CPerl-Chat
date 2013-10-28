@@ -1,4 +1,4 @@
-TARGET=server
+TARGET=bluechatd
 OBJS=server.o
 CC=-g -c
 SRCS=$(OBJ:.o=.c)

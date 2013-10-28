@@ -1,4 +1,4 @@
-TARGET=chat
+TARGET=bluechat
 OBJS=chat_main.o
 CC=-g -c
 LIB=-lncurses -lpthread
