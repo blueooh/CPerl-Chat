@@ -1,0 +1,221 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/epoll.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
+#define SA  struct sockaddr
+#define EPOLL_SIZE		20
+
+#define MESSAGE_BUFFER_SIZE 256
+#define ID_SIZE 50
+
+enum {
+    MSG_ALAM_STATE = 0,
+    MSG_DATA_STATE,
+    MSG_NEWUSER_STATE,
+};
+
+typedef struct user_data {
+    int sock;
+    char id[ID_SIZE];
+} ud;
+
+typedef struct user_node {
+    ud usr_data;
+    struct user_node *prev;
+    struct user_node *next;
+}unode;
+
+typedef unode* p_unode;
+
+typedef struct user_list {
+    int count;
+    p_unode head;
+    p_unode tail;
+}ulist;
+
+typedef struct message_st {
+    unsigned int state;
+    char id[ID_SIZE];
+    char message[MESSAGE_BUFFER_SIZE];
+}msgst;
+
+void init_ulist(ulist *lptr)
+{
+    lptr->count = 0;
+    lptr->head = NULL;
+    lptr->tail = NULL;
+}
+
+void insert_ulist(ulist *lptr, ud data)
+{
+    p_unode tmp_nptr;
+    p_unode new_nptr = (p_unode)malloc(sizeof(unode));
+
+    memcpy(&new_nptr->usr_data, &data, sizeof(ud));
+
+    if(!lptr->head) {
+	lptr->head = lptr->tail = new_nptr;
+	new_nptr->next = NULL;
+	new_nptr->prev = NULL;
+    } else {
+	lptr->tail->next = new_nptr;
+	new_nptr->prev = lptr->tail;
+	lptr->tail = new_nptr;
+	new_nptr->next = NULL;
+    }
+
+    lptr->count++;
+}
+
+int main(int argc, char **argv)
+{
+    struct sockaddr_in addr, clientaddr;
+    struct eph_comm *conn;
+    int sfd;
+    int cfd;
+    int clilen;
+    int flags = 1;
+    int n, i;
+    int readn;
+    struct epoll_event ev,*events;
+
+    int efd;
+    char buf_in[256];
+
+    // 이벤트 풀의 크기만큼 events구조체를 생성한다.
+    events = (struct epoll_event *)malloc(sizeof(*events) * EPOLL_SIZE);
+
+    ulist *user_list = (ulist *)malloc(sizeof(ulist));
+    init_ulist(user_list);
+
+    // epoll_create를 이용해서 epoll 지정자를 생성한다.	
+    if ((efd = epoll_create(100)) < 0)
+    {
+	perror("epoll_create error");
+	return 1;
+    }
+
+
+    // --------------------------------------
+    // 듣기 소켓 생성을 위한 일반적인 코드
+    clilen = sizeof(clientaddr);
+    sfd = socket(AF_INET, SOCK_STREAM, 0);	
+    if (sfd == -1)
+    {
+	perror("socket error :");
+	close(sfd);
+	return 1;
+    }
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (bind (sfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+    {
+	close(sfd);
+	return 1;
+    }
+    listen(sfd, 5);
+    // --------------------------------------
+
+    // 만들어진 듣기 소켓을 epoll이벤트 풀에 추가한다.
+    // EPOLLIN(read) 이벤트의 발생을 탐지한다.
+    ev.events = EPOLLIN;
+    ev.data.fd = sfd;
+    epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev);
+    while(1)
+    {
+	// epoll이벤트 풀에서 이벤트가 발생했는지를 검사한다.
+	n = epoll_wait(efd, events, EPOLL_SIZE, -1);
+	if (n == -1 )
+	{
+	    perror("epoll wait error");
+	}
+
+	//printf("event count: %d\n", n);
+
+	// 만약 이벤트가 발생했다면 발생한 이벤트의 수만큼
+	// 돌면서 데이터를 읽어 옵니다. 
+	for (i = 0; i < n; i++)
+	{
+	    // 만약 이벤트가 듣기 소켓에서 발생한 거라면
+	    // accept를 이용해서 연결 소켓을 생성한다. 
+	    if (events[i].data.fd == sfd)
+	    {
+		msgst ms;
+		char *msg = "Connect Success!";
+
+		//printf("Accept\n");
+		cfd = accept(sfd, (SA *)&clientaddr, &clilen);
+		ev.events = EPOLLIN;
+		ev.data.fd = cfd;
+		epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev);
+
+		ms.state = MSG_ALAM_STATE;
+		memcpy(ms.message, msg, strlen(msg));
+		write(cfd, (char *)&ms, sizeof(msgst));
+	    }
+	    // 연결소켓에서 이벤트가 발생했다면
+	    // 데이터를 읽는다.
+	    else
+	    {
+		msgst ms;
+		memset(buf_in, 0x00, 256);
+		readn = read(events[i].data.fd, (char *)&ms, 1024);
+		if (readn <= 0)
+		{
+		    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, events);
+		    close(events[i].data.fd);
+		    //printf("Close fd\n", cfd);
+		}
+		else
+		{
+		    ud usr_data;
+		    p_unode cnode;
+		    msgst tmp_ms;
+
+		    switch(ms.state) {
+			case MSG_NEWUSER_STATE:
+			    printf("insert new user(%s)\n", ms.id);
+			    usr_data.sock = events[i].data.fd;
+			    strcpy(usr_data.id, ms.id);
+			    insert_ulist(user_list, usr_data);
+
+			    cnode = user_list->head;
+			    tmp_ms.state = MSG_NEWUSER_STATE;
+
+			    while(cnode) {
+				strcpy(tmp_ms.id, cnode->usr_data.id);
+				write(usr_data.sock, (char *)&tmp_ms, sizeof(msgst));
+				cnode = cnode->next;
+			    }
+
+			    cnode = user_list->head;
+
+			    while(cnode) {
+				if(cnode->usr_data.sock != events[i].data.fd) {
+				    write(cnode->usr_data.sock, (char *)&ms, sizeof(msgst));
+				}
+				cnode = cnode->next;
+			    }
+			    continue;
+		    }
+
+		    cnode = user_list->head;
+
+		    while(cnode) {
+			printf("%s: %s(%d)\n", ms.id, ms.message, ms.state);
+			write(cnode->usr_data.sock, (char *)&ms, sizeof(msgst));
+			cnode = cnode->next;
+		    }
+		}
+	    }
+	}
+    }
+}
