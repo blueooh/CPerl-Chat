@@ -190,7 +190,8 @@ int main(int argc, char **argv)
 		epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev);
 
 		ms.state = MSG_ALAM_STATE;
-		memcpy(ms.message, msg, strlen(msg));
+		strcpy(ms.message, msg);
+                ms.message[strlen(msg)] = '\0';
 		write(cfd, (char *)&ms, sizeof(msgst));
 	    }
 	    // 연결소켓에서 이벤트가 발생했다면
