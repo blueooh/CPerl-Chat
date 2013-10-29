@@ -14,6 +14,9 @@ int main(int argc, char *argv[])
     int row, col, startx, starty, width, height;
     char *first_scr = "Enter your id: ";
 
+    setlocale(LC_ALL, "ko_KR.utf8");
+    setlocale(LC_CTYPE, "ko_KR.utf8");
+
     initscr();
     cbreak();
     refresh();

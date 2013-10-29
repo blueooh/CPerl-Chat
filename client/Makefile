@@ -1,7 +1,7 @@
 TARGET=bluechat
 OBJS=chat_main.o
 CC=-g -c
-LIB=-lncurses -lpthread
+LIB=-lncursesw -lpthread
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
