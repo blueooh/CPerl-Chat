@@ -94,8 +94,12 @@ void exit_error(char* err_msg)
 
 void disconnect_server()
 {
-    pthread_cancel(rcv_pthread);
-    close(sock);
+    if(rcv_pthread) {
+	pthread_cancel(rcv_pthread);
+    }
+    if(sock) {
+	close(sock);
+    }
 }
 
 void connect_server()
