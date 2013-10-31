@@ -10,12 +10,10 @@ int main(int argc, char *argv[])
 {
     char str[MESSAGE_BUFFER_SIZE];
     char id[ID_SIZE];
-    msgst ms;
     char *first_scr = "Enter your id: ";
+    msgst ms;
 
-    setlocale(LC_ALL, "ko_KR.utf8");
-    setlocale(LC_CTYPE, "ko_KR.utf8");
-
+    set_env();
     initscr();
     cbreak();
     refresh();
@@ -368,4 +366,18 @@ WINDOW *create_window(int h, int w, int y, int x)
     wrefresh(win);
 
     return win;
+}
+
+void set_env()
+{
+    char *lc;
+
+    lc = getenv("LC_CTYPE");
+    if(lc != NULL) {
+	setlocale(LC_CTYPE, lc);
+    } else if(lc = getenv("LC_ALL")) {
+	setlocale(LC_CTYPE, lc);
+    } else {
+	setlocale(LC_CTYPE, "");
+    }
 }
