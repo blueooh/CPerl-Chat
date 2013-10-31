@@ -74,8 +74,7 @@ int main(int argc, char *argv[])
 	}
 
 	if(sock) {
-	    memset(ms.message, 0x0, MESSAGE_BUFFER_SIZE); 
-	    memcpy(ms.message, str, strlen(str));
+	    strcpy(ms.message, str);
 	    write(sock, (char *)&ms, sizeof(msgst));
 	}
     }
