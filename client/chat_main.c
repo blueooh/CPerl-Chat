@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     refresh();
 
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
+
     getstr(id);
     memcpy(ms.id, id, strlen(id));
     ms.id[strlen(id)] = '\0';
@@ -49,7 +50,9 @@ int main(int argc, char *argv[])
 		update_show_win(message_list);
 		continue;
 	    }
-	    connect_server();
+	    if(connect_server() < 0) {
+		continue;
+	    }
 	    ms.state = MSG_NEWUSER_STATE;
 	} else if(!strcmp("/disconnect", str)) {
 	    disconnect_server();
@@ -88,10 +91,15 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void exit_error(char* err_msg)
+void print_error(char* err_msg)
 {
-    endwin();
-    printf("ERROR: %s\n", err_msg);
+    char buf[MESSAGE_BUFFER_SIZE];
+
+    strcpy(buf, "ERROR: ");
+    strcat(buf, err_msg);
+
+    insert_mlist(message_list, buf);
+    update_show_win(message_list);
 }
 
 void disconnect_server()
@@ -104,27 +112,36 @@ void disconnect_server()
     }
 }
 
-void connect_server()
+int connect_server()
 {
     struct sockaddr_in srv_addr;
     int thr_id;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(!sock) {
-	exit_error("socket error!\n");
+	print_error("socket error!\n");
+	return -1;
     }
     memset(&srv_addr, 0x0, sizeof(srv_addr));
     srv_addr.sin_family = AF_INET;
     srv_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-	exit_error("connect error\n");
+	print_error("connect error!\n");
+	close(sock);
+	sock = 0;
+	return -1;
     }
 
     thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
     if(thr_id < 0) {
-	exit_error("pthread_create error");
+	print_error("pthread_create error");
+	close(sock);
+	sock = 0;
+	return -1;
     }
+
+    return 0;
 }
 
 void *rcv_thread(void *data) {
