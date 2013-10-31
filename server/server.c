@@ -20,6 +20,7 @@ enum {
     MSG_DATA_STATE,
     MSG_NEWUSER_STATE,
     MSG_DELUSER_STATE,
+    MSG_ENDUSER_STATE
 };
 
 typedef struct user_data {
@@ -231,7 +232,7 @@ int main(int argc, char **argv)
 
 		    switch(ms.state) {
 			case MSG_NEWUSER_STATE:
-			    printf("insert new user(%s)\n", ms.id);
+			    //printf("insert new user(%s)\n", ms.id);
 			    usr_data.sock = events[i].data.fd;
 			    strcpy(usr_data.id, ms.id);
 			    insert_ulist(user_list, usr_data);
@@ -244,6 +245,8 @@ int main(int argc, char **argv)
 				write(usr_data.sock, (char *)&tmp_ms, sizeof(msgst));
 				cnode = cnode->next;
 			    }
+                            tmp_ms.state = MSG_ENDUSER_STATE;
+                            write(usr_data.sock, (char *)&tmp_ms, sizeof(msgst));
 
 			    cnode = user_list->head;
 
@@ -259,7 +262,7 @@ int main(int argc, char **argv)
 		    cnode = user_list->head;
 
 		    while(cnode) {
-			printf("%s: %s(%d)\n", ms.id, ms.message, ms.state);
+			//printf("%s: %s(%d)\n", ms.id, ms.message, ms.state);
 			write(cnode->usr_data.sock, (char *)&ms, sizeof(msgst));
 			cnode = cnode->next;
 		    }
