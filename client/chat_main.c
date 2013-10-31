@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
     char str[MESSAGE_BUFFER_SIZE];
     char id[ID_SIZE];
     msgst ms;
-    int row, col, startx, starty, width, height;
     char *first_scr = "Enter your id: ";
 
     setlocale(LC_ALL, "ko_KR.utf8");
@@ -346,7 +345,6 @@ void update_ulist_win(ulist *list)
 WINDOW *create_window(int h, int w, int y, int x)
 {
     WINDOW *win;
-    int row, col, startx, starty, width, height;
 
     win = newwin(h, w, y, x);
     box(win, 0, 0);
