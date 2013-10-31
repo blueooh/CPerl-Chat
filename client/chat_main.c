@@ -174,11 +174,15 @@ void *rcv_thread(void *data) {
 		wrefresh(ulist_win);
 		insert_ulist(user_list, ms.id);
 		update_ulist_win(user_list);
-		refresh();
-		continue;
+		strcpy(message_buf, ms.id);
+		strcat(message_buf, "님이 입장하셨습니다!");
+		break;
 	    case MSG_DELUSER_STATE:
 		delete_ulist(user_list, ms.id);
 		update_ulist_win(user_list);
+		strcpy(message_buf, ms.id);
+		strcat(message_buf, "님이 퇴장하셨습니다!");
+		break;
 	}
 	insert_mlist(message_list, message_buf);
 	update_show_win(message_list);
