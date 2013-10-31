@@ -110,6 +110,7 @@ void disconnect_server()
     }
     if(sock) {
 	close(sock);
+	sock = 0;
     }
 }
 
