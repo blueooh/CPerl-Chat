@@ -39,10 +39,9 @@ int main(int argc, char *argv[])
     chat_win = create_window(3, COLS - 1, LINES - 3, 0);
 
     while(1) {
-	move(LINES - 2, 2);
-	refresh();
-	getstr(str);
-	destroy_window(chat_win);
+	move(LINES - 2, 1);
+	mvwgetstr(chat_win, 1, 1, str);
+	delwin(chat_win);
 	chat_win = create_window(3, COLS - 1, LINES - 3, 0);
 
 	if(!strcmp("/connect", str)) {
@@ -313,7 +312,7 @@ void update_show_win(mlist *list)
     int i, msg_cnt = list->count;
     p_mnode cnode = list->tail;
 
-    destroy_window(show_win);
+    delwin(show_win);
     show_win = create_window(LINES - 4, COLS - 17, 0, 16); 
 
     for(i = 0; i < msg_cnt && cnode; i++) {
@@ -329,7 +328,7 @@ void update_ulist_win(ulist *list)
     int i, usr_cnt = list->count;
     p_unode cnode = list->head;
 
-    destroy_window(ulist_win);
+    delwin(ulist_win);
     ulist_win = create_window(LINES - 4, 15, 0, 0); 
 
     for(i = 0; i < usr_cnt && cnode; i++) {
@@ -350,11 +349,4 @@ WINDOW *create_window(int h, int w, int y, int x)
     wrefresh(win);
 
     return win;
-}
-
-void destroy_window(WINDOW *win)
-{
-    wborder(win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-    wrefresh(win);
-    delwin(win);
 }
