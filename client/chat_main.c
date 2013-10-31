@@ -45,6 +45,11 @@ int main(int argc, char *argv[])
 	chat_win = create_window(3, COLS - 1, LINES - 3, 0);
 
 	if(!strcmp("/connect", str)) {
+	    if(sock) {
+		insert_mlist(message_list, "already connected!");
+		update_show_win(message_list);
+		continue;
+	    }
 	    connect_server();
 	    ms.state = MSG_NEWUSER_STATE;
 	} else if(!strcmp("/disconnect", str)) {
