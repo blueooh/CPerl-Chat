@@ -5,6 +5,7 @@ ulist *user_list;
 WINDOW *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
+int usr_state;
 
 int main(int argc, char *argv[])
 {
@@ -12,6 +13,8 @@ int main(int argc, char *argv[])
     char id[ID_SIZE];
     char *first_scr = "Enter your id: ";
     msgst ms;
+
+    usr_state = USER_LOGOUT_STATE;
 
     set_env();
     initscr();
@@ -62,6 +65,7 @@ int main(int argc, char *argv[])
 		update_ulist_win(user_list);
 		insert_mlist(message_list, "disconnected!");
 		update_show_win(message_list);
+		usr_state = USER_LOGOUT_STATE;
 		continue;
 	    }else if(!strcmp("/exit", str)) {
 		break;
@@ -175,15 +179,22 @@ void *rcv_thread(void *data) {
 		wrefresh(ulist_win);
 		insert_ulist(user_list, ms.id);
 		update_ulist_win(user_list);
-		strcpy(message_buf, ms.id);
-		strcat(message_buf, "님이 입장하셨습니다!");
-		break;
+		if(usr_state == USER_LOGIN_STATE) {
+		    strcpy(message_buf, ms.id);
+		    strcat(message_buf, "님이 입장하셨습니다!");
+		    break;
+		} 
+		wrefresh(chat_win);
+		continue;
 	    case MSG_DELUSER_STATE:
 		delete_ulist(user_list, ms.id);
 		update_ulist_win(user_list);
 		strcpy(message_buf, ms.id);
 		strcat(message_buf, "님이 퇴장하셨습니다!");
 		break;
+	    case MSG_ENDUSER_STATE:
+		usr_state = USER_LOGIN_STATE;
+		continue;
 	}
 	insert_mlist(message_list, message_buf);
 	update_show_win(message_list);

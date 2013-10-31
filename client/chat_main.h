@@ -18,6 +18,12 @@ enum {
     MSG_DATA_STATE,
     MSG_NEWUSER_STATE,
     MSG_DELUSER_STATE,
+    MSG_ENDUSER_STATE,
+};
+
+enum {
+    USER_LOGOUT_STATE = 0,
+    USER_LOGIN_STATE
 };
 
 typedef struct msg_node {
