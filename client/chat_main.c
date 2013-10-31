@@ -42,36 +42,39 @@ int main(int argc, char *argv[])
 	delwin(chat_win);
 	chat_win = create_window(3, COLS - 1, LINES - 3, 0);
 
-	if(!strcmp("/connect", str)) {
-	    if(sock) {
-		insert_mlist(message_list, "already connected!");
+	if(!strlen(str)) 
+	    continue;
+
+	if(str[0] == '/') {
+	    if(!strcmp("/connect", str)) {
+		if(sock) {
+		    insert_mlist(message_list, "already connected!");
+		    update_show_win(message_list);
+		    continue;
+		}
+		if(connect_server() < 0) {
+		    continue;
+		}
+		ms.state = MSG_NEWUSER_STATE;
+	    } else if(!strcmp("/disconnect", str)) {
+		disconnect_server();
+		clear_ulist(user_list);
+		update_ulist_win(user_list);
+		insert_mlist(message_list, "disconnected!");
 		update_show_win(message_list);
 		continue;
-	    }
-	    if(connect_server() < 0) {
+	    }else if(!strcmp("/exit", str)) {
+		break;
+	    } else if(!strcmp("/clear", str)) {
+		clear_mlist(message_list);
+		update_show_win(message_list);
+		move(LINES - 2, 2);
 		continue;
 	    }
-	    ms.state = MSG_NEWUSER_STATE;
-	} else if(!strcmp("/disconnect", str)) {
-	    disconnect_server();
-	    clear_ulist(user_list);
-	    update_ulist_win(user_list);
-	    insert_mlist(message_list, "disconnected!");
-	    update_show_win(message_list);
-	    continue;
-	}else if(!strcmp("/exit", str)) {
-	    break;
-	} else if(!strcmp("/clear", str)) {
-	    clear_mlist(message_list);
-	    update_show_win(message_list);
-	    move(LINES - 2, 2);
-	    continue;
-	} else if(!strlen(str)) {
-	    move(LINES - 2, 2);
-	    continue;
 	} else {
 	    ms.state = MSG_DATA_STATE;
 	}
+
 
 	if(sock) {
 	    strcpy(ms.message, str);
