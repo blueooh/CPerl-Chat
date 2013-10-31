@@ -161,7 +161,7 @@ void *rcv_thread(void *data) {
 	}
 	insert_mlist(message_list, message_buf);
 	update_show_win(message_list);
-	refresh();
+	wrefresh(chat_win);
     }
 }
 
