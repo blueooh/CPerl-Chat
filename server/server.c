@@ -63,14 +63,14 @@ void insert_ulist(ulist *lptr, ud data)
     memcpy(&new_nptr->usr_data, &data, sizeof(ud));
 
     if(!lptr->head) {
-	lptr->head = lptr->tail = new_nptr;
 	new_nptr->next = NULL;
 	new_nptr->prev = NULL;
+	lptr->head = lptr->tail = new_nptr;
     } else {
-	lptr->tail->next = new_nptr;
 	new_nptr->prev = lptr->tail;
-	lptr->tail = new_nptr;
 	new_nptr->next = NULL;
+	lptr->tail->next = new_nptr;
+	lptr->tail = new_nptr;
     }
 
     lptr->count++;
