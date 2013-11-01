@@ -120,7 +120,6 @@ int main(int argc, char **argv)
     struct epoll_event ev,*events;
 
     int efd;
-    char buf_in[256];
 
     // 이벤트 풀의 크기만큼 events구조체를 생성한다.
     events = (struct epoll_event *)malloc(sizeof(*events) * EPOLL_SIZE);
@@ -200,7 +199,6 @@ int main(int argc, char **argv)
             else
             {
                 msgst ms;
-                memset(buf_in, 0x00, 256);
                 readn = read(events[i].data.fd, (char *)&ms, 1024);
                 if (readn <= 0)
                 {
