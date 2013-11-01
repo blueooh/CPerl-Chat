@@ -73,6 +73,5 @@ void clear_mlist(mlist *lptr);
 void *rcv_thread(void *data);
 void print_error(char* err_msg);
 int connect_server();
-void disconnect_server();
 void delete_ulist(ulist *lptr, char *key);
 void set_env();

@@ -50,39 +50,43 @@ int main(int argc, char *argv[])
 
 	if(str[0] == '/') {
 	    if(!strcmp("/connect", str)) {
-		if(sock) {
+		if(usr_state == USER_LOGIN_STATE) {
 		    insert_mlist(message_list, "already connected!");
 		    update_show_win(message_list);
 		    continue;
 		}
+
+		clear_ulist(user_list);
+		update_ulist_win(user_list);
+
 		if(connect_server() < 0) {
 		    continue;
 		}
 		ms.state = MSG_NEWUSER_STATE;
+		strcpy(ms.message, str);
+		write(sock, (char *)&ms, sizeof(msgst));
 	    } else if(!strcmp("/disconnect", str)) {
-		disconnect_server();
+		pthread_cancel(rcv_pthread);
+		shutdown(sock, SHUT_RDWR);
 		clear_ulist(user_list);
 		update_ulist_win(user_list);
 		insert_mlist(message_list, "disconnected!");
 		update_show_win(message_list);
 		usr_state = USER_LOGOUT_STATE;
 		continue;
-	    }else if(!strcmp("/exit", str)) {
-		break;
 	    } else if(!strcmp("/clear", str)) {
 		clear_mlist(message_list);
 		update_show_win(message_list);
-		move(LINES - 2, 2);
 		continue;
-	    }
+	    } else if(!strcmp("/exit", str)) {
+		break;
+	    } 
 	} else {
-	    ms.state = MSG_DATA_STATE;
-	}
-
-
-	if(sock) {
-	    strcpy(ms.message, str);
-	    write(sock, (char *)&ms, sizeof(msgst));
+	    if(usr_state == USER_LOGIN_STATE) {
+		ms.state = MSG_DATA_STATE;
+		strcpy(ms.message, str);
+		write(sock, (char *)&ms, sizeof(msgst));
+	    }
 	}
     }
 
@@ -107,17 +111,6 @@ void print_error(char* err_msg)
     update_show_win(message_list);
 }
 
-void disconnect_server()
-{
-    if(rcv_pthread) {
-	pthread_cancel(rcv_pthread);
-    }
-    if(sock) {
-	close(sock);
-	sock = 0;
-    }
-}
-
 int connect_server()
 {
     struct sockaddr_in srv_addr;
@@ -135,7 +128,6 @@ int connect_server()
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
 	print_error("connect error!\n");
 	close(sock);
-	sock = 0;
 	return -1;
     }
 
@@ -143,7 +135,6 @@ int connect_server()
     if(thr_id < 0) {
 	print_error("pthread_create error");
 	close(sock);
-	sock = 0;
 	return -1;
     }
 
@@ -151,50 +142,46 @@ int connect_server()
 }
 
 void *rcv_thread(void *data) {
-    int *sock = (int *)data;
     int read_len;
     msgst ms;
     char message_buf[ID_SIZE + MESSAGE_BUFFER_SIZE];
 
     while(1) {
-	read_len = read(*sock, (char *)&ms, sizeof(msgst));
+	read_len = read(sock, (char *)&ms, sizeof(msgst));
 	if(read_len <= 0) {
 	    pthread_exit(0);
-	    return;
-	}
-
-	memset(message_buf, 0x0, ID_SIZE + MESSAGE_BUFFER_SIZE);
-
-	switch(ms.state) {
-	    case MSG_ALAM_STATE:
-		strcpy(message_buf, ms.message);
-		break;
-	    case MSG_DATA_STATE:
-		strcpy(message_buf, ms.id);
-		strcat(message_buf, ": ");
-		strcat(message_buf, ms.message);
-		break;
-	    case MSG_NEWUSER_STATE:
-		mvwprintw(ulist_win, 1, 1, ms.id);
-		wrefresh(ulist_win);
-		insert_ulist(user_list, ms.id);
-		update_ulist_win(user_list);
-		if(usr_state == USER_LOGIN_STATE) {
-		    strcpy(message_buf, ms.id);
-		    strcat(message_buf, "님이 입장하셨습니다!");
+	} else {
+	    switch(ms.state) {
+		case MSG_ALAM_STATE:
+		    strcpy(message_buf, ms.message);
 		    break;
-		} 
-		wrefresh(chat_win);
-		continue;
-	    case MSG_DELUSER_STATE:
-		delete_ulist(user_list, ms.id);
-		update_ulist_win(user_list);
-		strcpy(message_buf, ms.id);
-		strcat(message_buf, "님이 퇴장하셨습니다!");
-		break;
-	    case MSG_ENDUSER_STATE:
-		usr_state = USER_LOGIN_STATE;
-		continue;
+		case MSG_DATA_STATE:
+		    strcpy(message_buf, ms.id);
+		    strcat(message_buf, ": ");
+		    strcat(message_buf, ms.message);
+		    break;
+		case MSG_NEWUSER_STATE:
+		    mvwprintw(ulist_win, 1, 1, ms.id);
+		    wrefresh(ulist_win);
+		    insert_ulist(user_list, ms.id);
+		    update_ulist_win(user_list);
+		    if(usr_state == USER_LOGIN_STATE) {
+			strcpy(message_buf, ms.id);
+			strcat(message_buf, "님이 입장하셨습니다!");
+			break;
+		    } 
+		    wrefresh(chat_win);
+		    continue;
+		case MSG_DELUSER_STATE:
+		    delete_ulist(user_list, ms.id);
+		    update_ulist_win(user_list);
+		    strcpy(message_buf, ms.id);
+		    strcat(message_buf, "님이 퇴장하셨습니다!");
+		    break;
+		case MSG_ENDUSER_STATE:
+		    usr_state = USER_LOGIN_STATE;
+		    continue;
+	    }
 	}
 	insert_mlist(message_list, message_buf);
 	update_show_win(message_list);
