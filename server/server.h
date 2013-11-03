@@ -12,7 +12,7 @@
 #define SA  struct sockaddr
 #define EPOLL_SIZE      20
 #define MESSAGE_BUFFER_SIZE 256
-#define ID_SIZE 5
+#define ID_SIZE 50
 
 enum {
     MSG_ALAM_STATE = 0,
