@@ -9,7 +9,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $<
 
-chat_main.o: server.c
+chat_main.o: server.c server.h
 
 clean:
 	rm -rf $(TARGET) $(OBJS)

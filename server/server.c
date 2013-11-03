@@ -1,111 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/epoll.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-
-#define SA  struct sockaddr
-#define EPOLL_SIZE      20
-
-#define MESSAGE_BUFFER_SIZE 256
-#define ID_SIZE 50
-
-enum {
-    MSG_ALAM_STATE = 0,
-    MSG_DATA_STATE,
-    MSG_NEWUSER_STATE,
-    MSG_DELUSER_STATE,
-    MSG_ENDUSER_STATE
-};
-
-typedef struct user_data {
-    int sock;
-    char id[ID_SIZE];
-} ud;
-
-typedef struct user_node {
-    ud usr_data;
-    struct user_node *prev;
-    struct user_node *next;
-}unode;
-
-typedef unode* p_unode;
-
-typedef struct user_list {
-    int count;
-    p_unode head;
-    p_unode tail;
-}ulist;
-
-typedef struct message_st {
-    unsigned int state;
-    char id[ID_SIZE];
-    char message[MESSAGE_BUFFER_SIZE];
-}msgst;
-
-void init_ulist(ulist *lptr)
-{
-    lptr->count = 0;
-    lptr->head = NULL;
-    lptr->tail = NULL;
-}
-
-void insert_ulist(ulist *lptr, ud data)
-{
-    p_unode tmp_nptr;
-    p_unode new_nptr = (p_unode)malloc(sizeof(unode));
-
-    memcpy(&new_nptr->usr_data, &data, sizeof(ud));
-
-    if(!lptr->head) {
-        new_nptr->next = NULL;
-        new_nptr->prev = NULL;
-        lptr->head = lptr->tail = new_nptr;
-    } else {
-        new_nptr->prev = lptr->tail;
-        new_nptr->next = NULL;
-        lptr->tail->next = new_nptr;
-        lptr->tail = new_nptr;
-    }
-
-    lptr->count++;
-}
-
-void delete_ulist(ulist *lptr, int key)
-{
-    p_unode cnode = lptr->head, tnode;
-
-    while(cnode) {
-        if(cnode->usr_data.sock == key) {
-            if(!cnode->prev) {
-                if(!cnode->next) {
-                    lptr->head = NULL;
-                    lptr->tail = NULL;
-                } else {
-                    lptr->head = lptr->tail = cnode->next;
-                    cnode->next->prev = NULL;
-                }
-            } else {
-                if(!cnode->next) {
-                    cnode->prev->next = NULL;
-                    lptr->tail = cnode->prev;
-                } else {
-                    cnode->next->prev = cnode->prev;
-                    cnode->prev->next = cnode->next;
-                }
-            }
-            lptr->count--;
-            free(cnode);
-            return;
-        }
-        cnode = cnode->next;
-    }
-}
+#include "server.h"
 
 int main(int argc, char **argv)
 {
@@ -267,5 +160,64 @@ int main(int argc, char **argv)
                 }
             }
         }
+    }
+}
+
+void init_ulist(ulist *lptr)
+{
+    lptr->count = 0;
+    lptr->head = NULL;
+    lptr->tail = NULL;
+}
+
+void insert_ulist(ulist *lptr, ud data)
+{
+    p_unode tmp_nptr;
+    p_unode new_nptr = (p_unode)malloc(sizeof(unode));
+
+    memcpy(&new_nptr->usr_data, &data, sizeof(ud));
+
+    if(!lptr->head) {
+        new_nptr->next = NULL;
+        new_nptr->prev = NULL;
+        lptr->head = lptr->tail = new_nptr;
+    } else {
+        new_nptr->prev = lptr->tail;
+        new_nptr->next = NULL;
+        lptr->tail->next = new_nptr;
+        lptr->tail = new_nptr;
+    }
+
+    lptr->count++;
+}
+
+void delete_ulist(ulist *lptr, int key)
+{
+    p_unode cnode = lptr->head, tnode;
+
+    while(cnode) {
+        if(cnode->usr_data.sock == key) {
+            if(!cnode->prev) {
+                if(!cnode->next) {
+                    lptr->head = NULL;
+                    lptr->tail = NULL;
+                } else {
+                    lptr->head = lptr->tail = cnode->next;
+                    cnode->next->prev = NULL;
+                }
+            } else {
+                if(!cnode->next) {
+                    cnode->prev->next = NULL;
+                    lptr->tail = cnode->prev;
+                } else {
+                    cnode->next->prev = cnode->prev;
+                    cnode->prev->next = cnode->next;
+                }
+            }
+            lptr->count--;
+            free(cnode);
+            return;
+        }
+        cnode = cnode->next;
     }
 }
