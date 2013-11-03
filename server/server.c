@@ -76,7 +76,6 @@ int main(int argc, char **argv)
                 msgst ms;
                 char *msg = "Connect Success!";
 
-                //printf("Accept\n");
                 cfd = accept(sfd, (SA *)&clientaddr, &clilen);
                 ev.events = EPOLLIN;
                 ev.data.fd = cfd;
@@ -106,6 +105,7 @@ int main(int argc, char **argv)
                     }
                     delete_ulist(user_list, events[i].data.fd);
                     epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, events);
+                    printf("Log out user(%s)\n", ms.id);
 
                     cnode = user_list->head;
                     while(cnode) {
@@ -113,7 +113,6 @@ int main(int argc, char **argv)
                         cnode = cnode->next;
                     }
                     close(events[i].data.fd);
-                    //printf("Close fd\n", cfd);
                 }
                 else
                 {
@@ -123,7 +122,7 @@ int main(int argc, char **argv)
 
                     switch(ms.state) {
                         case MSG_NEWUSER_STATE:
-                            //printf("insert new user(%s)\n", ms.id);
+                            printf("Log in user(%s)\n", ms.id);
                             usr_data.sock = events[i].data.fd;
                             strcpy(usr_data.id, ms.id);
                             insert_ulist(user_list, usr_data);
@@ -153,7 +152,6 @@ int main(int argc, char **argv)
                     cnode = user_list->head;
 
                     while(cnode) {
-                        //printf("%s: %s(%d)\n", ms.id, ms.message, ms.state);
                         write(cnode->usr_data.sock, (char *)&ms, sizeof(msgst));
                         cnode = cnode->next;
                     }
