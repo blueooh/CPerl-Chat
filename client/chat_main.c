@@ -1,4 +1,5 @@
 #include "chat_main.h"
+#include "motd.h"
 
 mlist *message_list;
 ulist *user_list;
@@ -27,7 +28,11 @@ int main(int argc, char *argv[])
     cbreak();
     refresh();
 
+
     // 첫 실행 화면 출력
+    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2, motd_1);
+    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2, motd_2);
+    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2, motd_3);
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
     mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
 
