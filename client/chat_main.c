@@ -1,14 +1,15 @@
 #include "chat_main.h"
 #include "motd.h"
 
-ulist *user_list;
 WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
 int usr_state;
 
 unsigned int msg_count;
+unsigned int usr_count;
 LIST_HEAD(msg_list);
+LIST_HEAD(usr_list);
 
 int main(int argc, char *argv[])
 {
@@ -46,7 +47,6 @@ int main(int argc, char *argv[])
     cbreak();
     refresh();
 
-
     // 첫 실행 화면 출력
     mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2, motd_1);
     mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2, motd_2);
@@ -64,10 +64,6 @@ int main(int argc, char *argv[])
     wmove(stdscr, LINES/2 + 2, ((COLS - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
     getstr(srvname);
     ms.id[strlen(id)] = '\0';
-
-    // 출력할 메시지 및 아이디 목록을 관리할 리스트 할당 및 초기화
-    user_list = (ulist *)malloc(sizeof(ulist));
-    init_ulist(user_list);
 
     // 로그&Top10 출력창 생성
     log_win = create_window(LINES - 40, COLS - 17, 0, 16);
@@ -106,8 +102,8 @@ int main(int argc, char *argv[])
                 }
 
                 // 사용자 목록 창과 리스트에 남아있는 사용자 목록을 초기화 한다.
-                clear_ulist(user_list);
-                update_ulist_win(user_list);
+                clear_usr_list();
+                update_usr_win();
 
                 // 접속 시도
                 if(connect_server() < 0) {
@@ -122,8 +118,8 @@ int main(int argc, char *argv[])
                 pthread_cancel(rcv_pthread);
                 shutdown(sock, SHUT_RDWR);
                 // 사용자 목록 초기화
-                clear_ulist(user_list);
-                update_ulist_win(user_list);
+                clear_usr_list();
+                update_usr_win();
                 insert_msg_list("disconnected!");
                 update_msg_win();
                 usr_state = USER_LOGOUT_STATE;
@@ -146,8 +142,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    clear_ulist(user_list);
-    free(user_list);
     close(sock);
     endwin();
 
@@ -232,8 +226,8 @@ void *rcv_thread(void *data) {
                     break;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:
-                    insert_ulist(user_list, ms.id);
-                    update_ulist_win(user_list);
+                    insert_usr_list(ms.id);
+                    update_usr_win();
                     if(usr_state == USER_LOGIN_STATE) {
                         strcpy(message_buf, ms.id);
                         strcat(message_buf, "님이 입장하셨습니다!");
@@ -243,8 +237,8 @@ void *rcv_thread(void *data) {
                     continue;
                     // 서버로 부터 연결 해제된 사용자에 대한 알림.
                 case MSG_DELUSER_STATE:
-                    delete_ulist(user_list, ms.id);
-                    update_ulist_win(user_list);
+                    delete_usr_list(ms.id);
+                    update_usr_win();
                     strcpy(message_buf, ms.id);
                     strcat(message_buf, "님이 퇴장하셨습니다!");
                     break;
@@ -259,109 +253,6 @@ void *rcv_thread(void *data) {
         update_msg_win();
         wrefresh(chat_win);
     }
-}
-
-void init_ulist(ulist *lptr)
-{
-    lptr->count = 0;
-    lptr->head = NULL;
-    lptr->tail = NULL;
-}
-
-void insert_ulist(ulist *lptr, char *id)
-{
-    p_unode tmp_nptr;
-    p_unode new_nptr = (p_unode)malloc(sizeof(unode));
-
-    memset(new_nptr->id, 0x0, sizeof(new_nptr->id));
-    memcpy(new_nptr->id, id, strlen(id));
-
-    if(!lptr->head) {
-        lptr->head = lptr->tail = new_nptr;
-        new_nptr->next = NULL;
-        new_nptr->prev = NULL;
-    } else {
-        lptr->tail->next = new_nptr;
-        new_nptr->prev = lptr->tail;
-        lptr->tail = new_nptr;
-        new_nptr->next = NULL;
-    }
-
-    if(lptr->count > (LINES - 7)) {
-        tmp_nptr = lptr->head->next;
-        free(lptr->head);
-        lptr->head = tmp_nptr;
-        return;
-    }
-
-    lptr->count++;
-}
-
-void clear_ulist(ulist *lptr)
-{
-    p_unode cnode = lptr->head, tnode;
-
-    while(cnode) {
-        tnode = cnode->next;
-        free(cnode);
-        cnode = tnode;
-        lptr->count--;
-    }
-
-    if(lptr->count == 0) {
-        init_ulist(lptr);
-    } else {
-        printw("Oops!! Memory leak!!\n");
-        refresh();
-    }
-}
-
-void delete_ulist(ulist *lptr, char *key)
-{
-    p_unode cnode = lptr->head, tnode;
-
-    while(cnode) {
-        if(!strcmp(cnode->id, key)) {
-            if(!cnode->prev) {
-                if(!cnode->next) {
-                    lptr->head = NULL;
-                    lptr->tail = NULL;
-                } else {
-                    lptr->head = lptr->tail = cnode->next;
-                    cnode->next->prev = NULL;
-                }
-            } else {
-                if(!cnode->next) {
-                    cnode->prev->next = NULL;
-                    lptr->tail = cnode->prev;
-                } else {
-                    cnode->next->prev = cnode->prev;
-                    cnode->prev->next = cnode->next;
-                }
-            }
-            lptr->count--;
-            free(cnode);
-            return;
-        }
-        cnode = cnode->next;
-    }
-
-}
-
-void update_ulist_win(ulist *list)
-{
-    int i, usr_cnt = list->count;
-    p_unode cnode = list->head;
-
-    delwin(ulist_win);
-    ulist_win = create_window(LINES - 4, 15, 0, 0); 
-
-    for(i = 0; i < usr_cnt && cnode; i++) {
-        mvwprintw(ulist_win, 1 + i, 1, cnode->id);
-        cnode = cnode->next;
-    }
-
-    wrefresh(ulist_win);
 }
 
 WINDOW *create_window(int h, int w, int y, int x)
@@ -432,4 +323,64 @@ void update_msg_win()
         mvwprintw(show_win, LINES - (19 + (i++)), 1, node->message);
 
     wrefresh(show_win);
+}
+
+void insert_usr_list(char *id)
+{
+    int i = 0;
+    struct usr_list_node *node, *pos;
+
+    node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
+    strcpy(node->id, id);
+    list_add(&node->list, &usr_list);
+
+    /*
+    list_for_each_entry(pos, &usr_list, list) {
+        if(++i >= LINES - 18) {
+            list_del(&pos->list);
+            free(pos);
+            return;
+        }
+    }
+    */
+
+    usr_count++;
+}
+
+void delete_usr_list(char* id)
+{
+    struct usr_list_node *pos;
+
+    list_for_each_entry(pos, &usr_list, list) {
+        if(!strcmp(pos->id, id)) {
+            list_del(&pos->list);
+            free(pos);
+            return;
+        }
+    }
+}
+
+void clear_usr_list()
+{
+    struct usr_list_node *node, *tnode;
+
+    list_for_each_entry_safe(node, tnode, &usr_list, list) {
+        list_del(&node->list);
+        free(node);
+        msg_count--;
+    }
+}
+
+void update_usr_win()
+{
+    int i = 0;
+    struct usr_list_node *node;
+
+    delwin(ulist_win);
+    ulist_win = create_window(LINES - 4, 15, 0, 0); 
+
+    list_for_each_entry_reverse(node, &usr_list, list)
+        mvwprintw(ulist_win, 1 + (i++), 1, node->id);
+
+    wrefresh(ulist_win);
 }

@@ -29,20 +29,6 @@ enum {
     USER_LOGIN_STATE
 };
 
-typedef struct user_node {
-    char id[ID_SIZE];
-    struct user_node *prev;
-    struct user_node *next;
-}unode;
-
-typedef unode* p_unode;
-
-typedef struct user_list {
-    int count;
-    p_unode head;
-    p_unode tail;
-}ulist;
-
 typedef struct message_st {
     unsigned int state;
     char id[ID_SIZE];
@@ -54,18 +40,23 @@ struct msg_list_node {
     char message[MESSAGE_BUFFER_SIZE];
 };
 
+struct usr_list_node {
+    struct list_head list;
+    char id[ID_SIZE];
+};
+
 void insert_msg_list(char *msg);
 void clear_msg_list();
 void update_msg_win();
 
+void insert_usr_list(char *id);
+void delete_usr_list(char *id);
+void clear_usr_list();
+void update_usr_win();
+
 WINDOW *create_window(int h, int w, int y, int x);
 void destroy_window(WINDOW *win);
-void update_ulist_win(ulist *list);
-void init_ulist(ulist *lptr);
-void insert_ulist(ulist *lptr, char *id);
-void clear_ulist(ulist *lptr);
 void *rcv_thread(void *data);
 void print_error(char* err_msg);
 int connect_server();
-void delete_ulist(ulist *lptr, char *key);
 void set_env();
