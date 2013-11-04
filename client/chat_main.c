@@ -367,7 +367,7 @@ void clear_usr_list()
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         list_del(&node->list);
         free(node);
-        msg_count--;
+        usr_count--;
     }
 }
 
