@@ -2,7 +2,7 @@
 
 mlist *message_list;
 ulist *user_list;
-WINDOW *show_win, *ulist_win, *chat_win;
+WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
 int usr_state;
@@ -11,7 +11,9 @@ int main(int argc, char *argv[])
 {
     char str[MESSAGE_BUFFER_SIZE];
     char id[ID_SIZE];
+    char srvname[ID_SIZE];
     char *first_scr = "Enter your id: ";
+    char *srv_name_scr = "Server Name: ";
     msgst ms;
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
@@ -27,10 +29,16 @@ int main(int argc, char *argv[])
 
     // 첫 실행 화면 출력
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
+    mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
 
+    //커서를 맨앞으로 이동
+    wmove(stdscr, LINES/2, ((COLS - strlen(first_scr))/2) + strlen(first_scr) + 1);
     // 아이디 값을 받아서 저장
     getstr(id);
     memcpy(ms.id, id, strlen(id));
+    //커서를 맨앞으로 이동
+    wmove(stdscr, LINES/2 + 2, ((COLS - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
+    getstr(srvname);
     ms.id[strlen(id)] = '\0';
 
     // 출력할 메시지 및 아이디 목록을 관리할 리스트 할당 및 초기화
@@ -39,12 +47,20 @@ int main(int argc, char *argv[])
     user_list = (ulist *)malloc(sizeof(ulist));
     init_ulist(user_list);
 
+    // 로그&Top10 출력창 생성
+    log_win = create_window(LINES - 40, COLS - 17, 0, 16);
     // 메시지 출력창 생성
-    show_win = create_window(LINES - 4, COLS - 17, 0, 16); 
+    show_win = create_window(LINES - 17, COLS - 17, 13, 16); 
     // 사용자 목록창 생성 
     ulist_win = create_window(LINES - 4, 15, 0, 0); 
     // 사용자 입력창 생성
     chat_win = create_window(3, COLS - 1, LINES - 3, 0);
+
+    connect_server();
+    ms.state = MSG_NEWUSER_STATE;
+    strcpy(ms.message, str);
+    write(sock, (char *)&ms, sizeof(msgst));
+
 
     while(1) {
         // 커서위치 초기화
@@ -328,7 +344,7 @@ void insert_mlist(mlist *lptr, char *msg)
         new_nptr->next = NULL;
     }
 
-    if(lptr->count > (LINES - 7)) {
+    if(lptr->count > (LINES - 20)) {
         tmp_nptr = lptr->head->next;
         free(lptr->head);
         lptr->head = tmp_nptr;
@@ -363,10 +379,11 @@ void update_show_win(mlist *list)
     p_mnode cnode = list->tail;
 
     delwin(show_win);
-    show_win = create_window(LINES - 4, COLS - 17, 0, 16); 
+    //show_win = create_window(LINES - 4, COLS - 17, 0, 16); 
+    show_win = create_window(LINES - 17, COLS - 17, 13, 16);
 
     for(i = 0; i < msg_cnt && cnode; i++) {
-        mvwprintw(show_win, LINES - (6 + i), 1, cnode->msg);
+        mvwprintw(show_win, LINES - (19 + i), 1, cnode->msg);
         cnode = cnode->prev;
     }
 
