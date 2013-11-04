@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "list.h"
+
 #define SERVER_ADDRESS "172.30.0.104"
 #define SERVER_PORT "8888"
 #define MESSAGE_BUFFER_SIZE 256
@@ -25,20 +27,6 @@ enum {
     USER_LOGOUT_STATE = 0,
     USER_LOGIN_STATE
 };
-
-typedef struct msg_node {
-    char msg[MESSAGE_BUFFER_SIZE];
-    struct msg_node *prev;
-    struct msg_node *next;
-}mnode;
-
-typedef mnode* p_mnode;
-
-typedef struct msg_list {
-    int count;
-    p_mnode head;
-    p_mnode tail;
-}mlist;
 
 typedef struct user_node {
     char id[ID_SIZE];
@@ -60,16 +48,21 @@ typedef struct message_st {
     char message[MESSAGE_BUFFER_SIZE];
 }msgst;
 
+struct msg_list_node {
+    struct list_head list;
+    char message[MESSAGE_BUFFER_SIZE];
+};
+
+void insert_msg_list(char *msg);
+void clear_msg_list();
+void update_msg_win();
+
 WINDOW *create_window(int h, int w, int y, int x);
 void destroy_window(WINDOW *win);
 void update_ulist_win(ulist *list);
 void init_ulist(ulist *lptr);
 void insert_ulist(ulist *lptr, char *id);
 void clear_ulist(ulist *lptr);
-void update_show_win(mlist *list);
-void init_mlist(mlist *lptr);
-void insert_mlist(mlist *lptr, char *msg);
-void clear_mlist(mlist *lptr);
 void *rcv_thread(void *data);
 void print_error(char* err_msg);
 int connect_server();
