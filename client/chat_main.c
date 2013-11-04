@@ -6,6 +6,8 @@ WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
 int usr_state;
+
+unsigned int msg_count;
 LIST_HEAD(msg_list);
 
 int main(int argc, char *argv[])
@@ -128,8 +130,8 @@ int main(int argc, char *argv[])
                 continue;
             } else if(!strcmp("/clear", str)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
-                //clear_msg_list();
-                //update_msg_win();
+                clear_msg_list();
+                update_msg_win();
                 continue;
             } else if(!strcmp("/exit", str)) {
                 break;
@@ -400,20 +402,22 @@ void insert_msg_list(char *msg)
         if(++i >= LINES - 18) {
             list_del(&pos->list);
             free(pos);
-            break;
+            return;
         }
     }
+
+    msg_count++;
 }
 
 void clear_msg_list()
 {
-    struct msg_list_node *node;
+    struct msg_list_node *node, *tnode;
 
-    list_for_each_entry(node, &msg_list, list) {
+    list_for_each_entry_safe(node, tnode, &msg_list, list) {
         list_del(&node->list);
         free(node);
+        msg_count--;
     }
-    INIT_LIST_HEAD(&msg_list);
 }
 
 void update_msg_win()
