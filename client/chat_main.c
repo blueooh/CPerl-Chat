@@ -5,6 +5,7 @@ WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
 int usr_state;
+char time_buf[10];
 
 unsigned int msg_count;
 unsigned int usr_count;
@@ -13,11 +14,15 @@ LIST_HEAD(usr_list);
 
 int main(int argc, char *argv[])
 {
+    current_time();
+
     char str[MESSAGE_BUFFER_SIZE];
     char id[ID_SIZE];
     char srvname[ID_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
+    char *time_msg_scr = "Acess Time:";
+    char *current_time_scr = time_buf;
 
     msgst ms;
 
@@ -33,11 +38,16 @@ int main(int argc, char *argv[])
     refresh();
 
     // 첫 실행 화면 출력
-    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2, motd_1);
-    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2, motd_2);
-    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2, motd_3);
+    mvwprintw(stdscr, LINES/2 - 8, (COLS - strlen(first_scr))/2 - 16, motd_1);
+    mvwprintw(stdscr, LINES/2 - 7, (COLS - strlen(first_scr))/2 - 16, motd_2);
+    mvwprintw(stdscr, LINES/2 - 6, (COLS - strlen(first_scr))/2 - 16, motd_3);
+    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2 - 16, motd_4);
+    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2 - 16, motd_5);
+    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 16, motd_6);
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
     mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
+    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
     //커서를 맨앞으로 이동
     wmove(stdscr, LINES/2, ((COLS - strlen(first_scr))/2) + strlen(first_scr) + 1);
@@ -178,11 +188,6 @@ void *rcv_thread(void *data) {
     int read_len;
     msgst ms;
     char message_buf[ID_SIZE + MESSAGE_BUFFER_SIZE];
-    time_t timer;
-    struct tm *t;
-    int hh, mm, ss;
-    char time_buf[10];
-
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
@@ -197,14 +202,8 @@ void *rcv_thread(void *data) {
                     break;
                     // 서버로 부터 사용자들의 메시지를 전달 받을 때
                 case MSG_DATA_STATE:
-                    timer = time(NULL);
-                    t = localtime(&timer);
-                    hh = t->tm_hour;
-                    mm = t->tm_min;
-                    ss = t->tm_sec;
-
-                    sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
                     strcpy(message_buf, ms.id);
+                    current_time();
                     strcat(message_buf, time_buf);
                     strcat(message_buf, ":");
                     strcat(message_buf, ms.message);
@@ -215,6 +214,8 @@ void *rcv_thread(void *data) {
                     update_usr_win();
                     if(usr_state == USER_LOGIN_STATE) {
                         strcpy(message_buf, ms.id);
+                        current_time();
+                        strcat(message_buf, time_buf);
                         strcat(message_buf, "님이 입장하셨습니다!");
                         break;
                     } 
@@ -225,6 +226,8 @@ void *rcv_thread(void *data) {
                     delete_usr_list(ms.id);
                     update_usr_win();
                     strcpy(message_buf, ms.id);
+                    current_time();
+                    strcat(message_buf, time_buf);
                     strcat(message_buf, "님이 퇴장하셨습니다!");
                     break;
                     // 서버로 부터 사용자 목록 모두 받은 후 끝이라는 것을 받음.
@@ -368,4 +371,19 @@ void update_usr_win()
         mvwprintw(ulist_win, 1 + (i++), 1, node->id);
 
     wrefresh(ulist_win);
+}
+
+void current_time()
+{
+  time_t timer;
+  struct tm *t;
+  int hh, mm, ss;
+
+  timer = time(NULL);
+  t = localtime(&timer);
+  hh = t->tm_hour;
+  mm = t->tm_min;
+  ss = t->tm_sec;
+
+  sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
 }

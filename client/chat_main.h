@@ -59,3 +59,4 @@ void *rcv_thread(void *data);
 void print_error(char* err_msg);
 int connect_server();
 void set_env();
+void current_time();
