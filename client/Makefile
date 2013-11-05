@@ -1,4 +1,4 @@
-TARGET=bluechat
+TARGET=lightchat
 INCS=-I../liblist
 OBJS=chat_main.o
 CC=-g -c

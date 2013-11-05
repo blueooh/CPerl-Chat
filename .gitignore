@@ -1,5 +1,6 @@
 tags
 *.o
 *.swp
-client/bluechat
-server/bluechatd
+*.so
+client/lightchat
+server/lightchatd

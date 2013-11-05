@@ -1,4 +1,4 @@
-TARGET=bluechatd
+TARGET=lightchatd
 INCS=-I../liblist
 OBJS=server.o
 CC=-g -c
