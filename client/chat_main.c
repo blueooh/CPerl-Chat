@@ -14,11 +14,15 @@ LIST_HEAD(usr_list);
 
 int main(int argc, char *argv[])
 {
+    current_time();
+
     char str[MESSAGE_BUFFER_SIZE];
     char id[ID_SIZE];
     char srvname[ID_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
+    char *time_msg_scr = "Acess Time:";
+    char *current_time_scr = time_buf;
 
     msgst ms;
 
@@ -34,11 +38,11 @@ int main(int argc, char *argv[])
     refresh();
 
     // 첫 실행 화면 출력
-    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2, motd_1);
-    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2, motd_2);
-    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2, motd_3);
+    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 6, motd_1);
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
     mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
+    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
     //커서를 맨앞으로 이동
     wmove(stdscr, LINES/2, ((COLS - strlen(first_scr))/2) + strlen(first_scr) + 1);
