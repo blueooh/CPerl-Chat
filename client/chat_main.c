@@ -38,7 +38,12 @@ int main(int argc, char *argv[])
     refresh();
 
     // 첫 실행 화면 출력
-    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 6, motd_1);
+    mvwprintw(stdscr, LINES/2 - 8, (COLS - strlen(first_scr))/2 - 16, motd_1);
+    mvwprintw(stdscr, LINES/2 - 7, (COLS - strlen(first_scr))/2 - 16, motd_2);
+    mvwprintw(stdscr, LINES/2 - 6, (COLS - strlen(first_scr))/2 - 16, motd_3);
+    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2 - 16, motd_4);
+    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2 - 16, motd_5);
+    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 16, motd_6);
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
     mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
     mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
