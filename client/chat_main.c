@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
     strcpy(ms.message, str);
     write(sock, (char *)&ms, sizeof(msgst));
 
-
     while(1) {
         // 커서위치 초기화
         move(LINES - 2, 1);
