@@ -8,8 +8,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#include "list.h"
+#include <list.h>
 
 #define SERVER_ADDRESS "172.30.0.104"
 #define SERVER_PORT "8888"

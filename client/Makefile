@@ -1,17 +1,27 @@
 TARGET=bluechat
-OBJS=chat_main.o list.o
+INCS=-I../liblist
+OBJS=chat_main.o
 CC=-g -c
-LIB=-lncursesw -lpthread
+LIB=-L../lib -lncursesw -lpthread -llist
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
-	gcc -o $@ $^ $(LIB)
+	cd ../liblist;make;
+	gcc $(INCS) -o $@ $^ $(LIB)
 
 .c.o:
-	gcc $(CC) $<
+	gcc $(CC) $(INCS) $<
 
-chat_main.o: chat_main.c chat_main.h motd.h list.h
-list.o: list.c list.h
+chat_main.o: chat_main.c chat_main.h motd.h
 
 clean:
 	rm -rf $(TARGET) $(OBJS)
+	cd ../liblist/;make clean
+
+install:
+	cp ../lib/liblist.so /usr/lib
+	cp $(TARGET) /usr/bin
+
+uninstall:
+	rm -rf /usr/lib/liblist.so
+	rm -rf /usr/bin/$(TARGET)

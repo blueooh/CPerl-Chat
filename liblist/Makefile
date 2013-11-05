@@ -1,0 +1,17 @@
+CC=gcc
+CFLAGS= -c -Wall -p -fPIC
+LDFLAGS= -shared -o liblist.so
+OBJS= list.o
+
+all: list
+
+.c.o:
+	$(CC) $(CFLAGS) $? 
+
+list: $(OBJS)
+	$(CC) $(LDFLAGS) $(OBJS)
+	cp liblist.so ../lib/
+
+clean:  
+	rm -f *.o
+	rm -f list liblist.so
