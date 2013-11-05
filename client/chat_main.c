@@ -18,23 +18,8 @@ int main(int argc, char *argv[])
     char srvname[ID_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
-    char time_buf[1024];
-
-    int hh, mm, ss;
-    int hhmmss;
 
     msgst ms;
-
-    time_t timer;
-    struct tm *t;
-    //현재 시작을 초단위로 읽기
-    timer = time(NULL);
-    //초단위로 분리하여 구조체에 넣기
-    t = localtime(&timer);
-    hh = t->tm_hour;
-    mm = t->tm_min;
-    ss = t->tm_sec;
-    sprintf(time_buf, "%d:%d:%d", hh, mm, ss);
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
@@ -51,7 +36,6 @@ int main(int argc, char *argv[])
     mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2, motd_1);
     mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2, motd_2);
     mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2, motd_3);
-    mvwprintw(stdscr, LINES/2 - 6, (COLS - strlen(first_scr))/2, time_buf);
     mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
     mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
 
@@ -199,6 +183,7 @@ void *rcv_thread(void *data) {
     int hh, mm, ss;
     char time_buf[10];
 
+
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
@@ -212,13 +197,13 @@ void *rcv_thread(void *data) {
                     break;
                     // 서버로 부터 사용자들의 메시지를 전달 받을 때
                 case MSG_DATA_STATE:
-
+                    timer = time(NULL);
                     t = localtime(&timer);
                     hh = t->tm_hour;
                     mm = t->tm_min;
                     ss = t->tm_sec;
 
-                    sprintf(time_buf, "(%d:%d:%d)", hh, mm, ss);
+                    sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
                     strcpy(message_buf, ms.id);
                     strcat(message_buf, time_buf);
                     strcat(message_buf, ":");
