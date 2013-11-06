@@ -8,11 +8,13 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <list.h>
 
 #define SA  struct sockaddr
 #define EPOLL_SIZE      20
 #define MESSAGE_BUFFER_SIZE 256
 #define ID_SIZE 50
+#define USER_HASH_SIZE 20
 
 enum {
     MSG_ALAM_STATE = 0,
@@ -27,26 +29,19 @@ typedef struct user_data {
     char id[ID_SIZE];
 } ud;
 
-typedef struct user_node {
-    ud usr_data;
-    struct user_node *prev;
-    struct user_node *next;
-}unode;
-
-typedef unode* p_unode;
-
-typedef struct user_list {
-    int count;
-    p_unode head;
-    p_unode tail;
-}ulist;
-
 typedef struct message_st {
     unsigned int state;
     char id[ID_SIZE];
     char message[MESSAGE_BUFFER_SIZE];
 }msgst;
 
-void init_ulist(ulist *lptr);
-void insert_ulist(ulist *lptr, ud data);
-void delete_ulist(ulist *lptr, int key);
+struct user_list_node {
+    struct list_head list;
+    ud data;
+};
+
+unsigned int hash_func(char *s);
+void init_usr_list();
+void insert_usr_list(ud data);
+void delete_usr_list(ud data);
+int exist_usr_list(ud data);
