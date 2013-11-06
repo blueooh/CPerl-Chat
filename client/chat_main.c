@@ -6,6 +6,7 @@ int sock;
 pthread_t rcv_pthread;
 int usr_state;
 char time_buf[10];
+char id[ID_SIZE];
 
 unsigned int msg_count;
 unsigned int usr_count;
@@ -17,7 +18,6 @@ int main(int argc, char *argv[])
     current_time();
 
     char str[MESSAGE_BUFFER_SIZE];
-    char id[ID_SIZE];
     char srvname[ID_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
