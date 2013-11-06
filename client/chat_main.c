@@ -201,9 +201,9 @@ void *rcv_thread(void *data) {
                     break;
                     // 서버로 부터 사용자들의 메시지를 전달 받을 때
                 case MSG_DATA_STATE:
-                    strcpy(message_buf, ms.id);
                     current_time();
-                    strcat(message_buf, time_buf);
+                    strcpy(message_buf, time_buf);
+                    strcat(message_buf, ms.id);
                     strcat(message_buf, ":");
                     strcat(message_buf, ms.message);
                     break;
@@ -212,9 +212,9 @@ void *rcv_thread(void *data) {
                     insert_usr_list(ms.id);
                     update_usr_win();
                     if(usr_state == USER_LOGIN_STATE) {
-                        strcpy(message_buf, ms.id);
                         current_time();
-                        strcat(message_buf, time_buf);
+                        strcpy(message_buf, time_buf);
+                        strcat(message_buf, ms.id);
                         strcat(message_buf, "님이 입장하셨습니다!");
                         break;
                     } 
@@ -224,9 +224,9 @@ void *rcv_thread(void *data) {
                 case MSG_DELUSER_STATE:
                     delete_usr_list(ms.id);
                     update_usr_win();
-                    strcpy(message_buf, ms.id);
                     current_time();
-                    strcat(message_buf, time_buf);
+                    strcpy(message_buf, time_buf);
+                    strcat(message_buf, ms.id);
                     strcat(message_buf, "님이 퇴장하셨습니다!");
                     break;
                     // 서버로 부터 사용자 목록 모두 받은 후 끝이라는 것을 받음.
