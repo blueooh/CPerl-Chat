@@ -12,8 +12,15 @@
 
 #define SERVER_ADDRESS "172.30.0.104"
 #define SERVER_PORT "8888"
-#define MESSAGE_BUFFER_SIZE 256
+
+#define MESSAGE_SEPARATOR ": "
+
+#define SERVER_NAME_SIZE 30
+#define TIME_BUFFER_SIZE 10
 #define ID_SIZE 50
+#define MESSAGE_BUFFER_SIZE 512
+#define TOTAL_MESSAGE_SIZE \
+    (TIME_BUFFER_SIZE + ID_SIZE + MESSAGE_BUFFER_SIZE)
 
 enum {
     MSG_ALAM_STATE = 0,
@@ -36,7 +43,7 @@ typedef struct message_st {
 
 struct msg_list_node {
     struct list_head list;
-    char message[MESSAGE_BUFFER_SIZE];
+    char message[TOTAL_MESSAGE_SIZE];
 };
 
 struct usr_list_node {

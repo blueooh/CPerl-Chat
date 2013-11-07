@@ -5,7 +5,7 @@ WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread;
 int usr_state;
-char time_buf[10];
+char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
 
 unsigned int msg_count;
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     current_time();
 
     char str[MESSAGE_BUFFER_SIZE];
-    char srvname[ID_SIZE];
+    char srvname[SERVER_NAME_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
     char *time_msg_scr = "Acess Time:";
@@ -54,10 +54,10 @@ int main(int argc, char *argv[])
     // 아이디 값을 받아서 저장
     getstr(id);
     memcpy(ms.id, id, strlen(id));
+    ms.id[strlen(id)] = '\0';
     //커서를 맨앞으로 이동
     wmove(stdscr, LINES/2 + 2, ((COLS - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
     getstr(srvname);
-    ms.id[strlen(id)] = '\0';
 
     // 로그&Top10 출력창 생성
     log_win = create_window(LINES - 40, COLS - 17, 0, 16);
@@ -186,7 +186,7 @@ int connect_server()
 void *rcv_thread(void *data) {
     int read_len;
     msgst ms;
-    char message_buf[ID_SIZE + MESSAGE_BUFFER_SIZE];
+    char message_buf[TOTAL_MESSAGE_SIZE];
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
@@ -204,7 +204,7 @@ void *rcv_thread(void *data) {
                     current_time();
                     strcpy(message_buf, time_buf);
                     strcat(message_buf, ms.id);
-                    strcat(message_buf, ":");
+                    strcat(message_buf, MESSAGE_SEPARATOR);
                     strcat(message_buf, ms.message);
                     break;
                     // 서버로 부터 새로운 사용자에 대한 알림.

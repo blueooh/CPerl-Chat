@@ -12,7 +12,7 @@
 
 #define SA  struct sockaddr
 #define EPOLL_SIZE      20
-#define MESSAGE_BUFFER_SIZE 256
+#define MESSAGE_BUFFER_SIZE 512
 #define ID_SIZE 50
 #define USER_HASH_SIZE 20
 
