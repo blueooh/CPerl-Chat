@@ -19,7 +19,7 @@ clean:
 	cd ../liblist/;make clean
 
 install:
-	cp ../liblist/liblist.so /usr/lib
+	cp ../lib/liblist.so /usr/lib
 	cp $(TARGET) /usr/bin
 
 uninstall:

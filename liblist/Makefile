@@ -10,6 +10,7 @@ all: list
 
 list: $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS)
+	cp liblist.so ../lib/
 
 clean:  
 	rm -f *.o
