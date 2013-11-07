@@ -19,11 +19,11 @@ else {
 }
 
 my @top_tens = $decode_body =~ m{<K>(.*?)</K>}gsm; 
-my $file = "top_ten.log";
 
-open(my $fh, ">", $file) or die "cannot open > top_ten.log: $!"; 
+my $fp = '/tmp/top_ten.log';
+if ( -f $fp ) { system("rm $fp");}
 
 foreach my $p ( @top_tens ) {
-    print $fh "$p\n";
+    print "$p\n";
+    system("echo $p > /tmp/top_ten.log");
 }
-close $fh;

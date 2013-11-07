@@ -9,6 +9,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <list.h>
+#include <sys/stat.h> 
+#include <sys/select.h> 
+#include <fcntl.h> 
+#include <stdio.h> 
 
 #define SERVER_ADDRESS "172.30.0.104"
 #define SERVER_PORT "8888"
@@ -46,11 +50,19 @@ struct msg_list_node {
     char message[TOTAL_MESSAGE_SIZE];
 };
 
+struct info_list_node {
+    struct list_head list;
+    char message[TOTAL_MESSAGE_SIZE];
+};
+
 struct usr_list_node {
     struct list_head list;
     char id[ID_SIZE];
 };
 
+void insert_info_list(char *info);
+void clear_info_list();
+void update_info_win();
 void insert_msg_list(char *msg);
 void clear_msg_list();
 void update_msg_win();
@@ -63,6 +75,7 @@ void update_usr_win();
 WINDOW *create_window(int h, int w, int y, int x);
 void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
+void *info_win_thread(void *data);
 void print_error(char* err_msg);
 int connect_server();
 void set_env();

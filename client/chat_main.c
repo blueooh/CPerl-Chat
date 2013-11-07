@@ -3,7 +3,7 @@
 
 WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
-pthread_t rcv_pthread;
+pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
@@ -12,19 +12,20 @@ unsigned int msg_count;
 unsigned int usr_count;
 LIST_HEAD(msg_list);
 LIST_HEAD(usr_list);
+LIST_HEAD(info_list);
 
 int main(int argc, char *argv[])
 {
-    current_time();
-
+    int thr_id;
     char str[MESSAGE_BUFFER_SIZE];
     char srvname[SERVER_NAME_SIZE];
     char *first_scr = "Enter your id: ";
     char *srv_name_scr = "Server Name: ";
     char *time_msg_scr = "Acess Time:";
     char *current_time_scr = time_buf;
-
     msgst ms;
+
+    current_time();
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
@@ -67,6 +68,13 @@ int main(int argc, char *argv[])
     ulist_win = create_window(LINES - 4, 15, 0, 0); 
     // 사용자 입력창 생성
     chat_win = create_window(3, COLS - 1, LINES - 3, 0);
+
+    //top_ten을 출력하는 쓰레드 생성
+    thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
+    if(thr_id < 0) {
+        print_error("pthread_create error");
+        return -1;
+    }
 
     connect_server();
     ms.state = MSG_NEWUSER_STATE;
@@ -267,6 +275,50 @@ void set_env()
     }
 }
 
+void insert_info_list(char *info)
+{
+    int i = 0;
+    struct info_list_node *node, *pos;
+
+    node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
+    strcpy(node->message, info);
+    list_add(&node->list, &info_list);
+
+    /*
+    list_for_each_entry(pos, &info_list, list) {
+        if(++i >= LINES - 18) {
+            list_del(&pos->list);
+            free(pos);
+            return;
+        }
+    }
+    */
+}
+
+void clear_info_list()
+{
+    struct info_list_node *node, *tnode;
+
+    list_for_each_entry_safe(node, tnode, &info_list, list) {
+        list_del(&node->list);
+        free(node);
+    }
+}
+
+void update_info_win()
+{
+    int i = 0;
+    struct info_list_node *node;
+
+    delwin(log_win);
+    log_win = create_window(LINES - 40, COLS - 17, 0, 16);
+
+    list_for_each_entry(node, &info_list, list)
+      mvwprintw(log_win, LINES -45, 10, node->message);
+
+    wrefresh(log_win);
+}
+
 void insert_msg_list(char *msg)
 {
     int i = 0;
@@ -385,4 +437,50 @@ void current_time()
   ss = t->tm_sec;
 
   sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
+}
+
+void *info_win_thread(void *data) 
+{
+  int n, fd;
+  int state;
+
+  char buf[255];
+  struct timeval tv;
+
+  fd_set readfds, writefds;
+
+  if(mkfifo("/tmp/top_ten.log", 0644)) {
+    perror("open error : ");
+  }
+
+  if((fd = open("/tmp/top_ten.log", O_RDONLY)) == -1 ) {
+    perror("file open error : ");
+    exit(0);
+  }
+
+  memset(buf, 0x00, 255);
+
+  for(;;) {
+    FD_ZERO(&readfds);
+    FD_SET(fd, &readfds);
+
+    state = select(fd+1, &readfds, NULL, NULL, NULL);
+    switch(state) {
+    case -1:
+      perror("select error : ");
+      exit(0);
+      break;
+
+    default :
+      if (FD_ISSET(fd, &readfds)) {
+        n = read(fd, buf, 255);
+      }
+      strtok
+        insert_info_list(buf);
+        update_info_win();
+      memset (buf, 0x00, 255);
+      break;
+    }
+    usleep(1000);
+  }
 }
