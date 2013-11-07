@@ -1,5 +1,6 @@
 tags
 *.o
 *.swp
+*.so
 client/lightchat
 server/lightchatd
