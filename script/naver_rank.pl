@@ -18,12 +18,20 @@ else {
     die $resp->status_line;
 }
 
-my @top_tens = $decode_body =~ m{<K>(.*?)</K>}gsm; 
+my @html_body = $decode_body =~ m{<K>(.*?)</K>}gsm; 
+my @top_tens;
+my $i = 1;
+
+foreach my $p (@html_body) {
+    push @top_tens, "$i. $p";
+    $i++;
+}
+
+my $top_ten = join('/', @top_tens);
+print "$top_ten\n";
 
 my $fp = '/tmp/top_ten.log';
-if ( -f $fp ) { system("rm $fp");}
 
-foreach my $p ( @top_tens ) {
-    print "$p\n";
-    system("echo $p > /tmp/top_ten.log");
-}
+open(my $fh, ">", $fp) or die "cannot open > top_ten.log: $!"; 
+print $fh "$top_ten\n";
+close $fh;

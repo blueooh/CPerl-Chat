@@ -45,8 +45,7 @@ int main(int argc, char *argv[])
     mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2 - 16, motd_4);
     mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2 - 16, motd_5);
     mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 16, motd_6);
-    mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr);
-    mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr); mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
     mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
     mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
@@ -69,7 +68,6 @@ int main(int argc, char *argv[])
     // 사용자 입력창 생성
     chat_win = create_window(3, COLS - 1, LINES - 3, 0);
 
-    //top_ten을 출력하는 쓰레드 생성
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
@@ -284,7 +282,6 @@ void insert_info_list(char *info)
     strcpy(node->message, info);
     list_add(&node->list, &info_list);
 
-    /*
     list_for_each_entry(pos, &info_list, list) {
         if(++i >= LINES - 18) {
             list_del(&pos->list);
@@ -292,7 +289,6 @@ void insert_info_list(char *info)
             return;
         }
     }
-    */
 }
 
 void clear_info_list()
@@ -308,13 +304,22 @@ void clear_info_list()
 void update_info_win()
 {
     int i = 0;
+    char title[30] = "[-Naver Top 10-]";
     struct info_list_node *node;
 
     delwin(log_win);
     log_win = create_window(LINES - 40, COLS - 17, 0, 16);
+    mvwprintw(log_win, (LINES - 49), 2, title);
 
-    list_for_each_entry(node, &info_list, list)
-      mvwprintw(log_win, LINES -45, 10, node->message);
+    list_for_each_entry(node, &info_list, list) {
+      mvwprintw(log_win, (LINES - 42) - i, 2, node->message);
+      if(i < 6) {
+        i++;
+      }
+      else {
+        i = 0;
+      }
+    }
 
     wrefresh(log_win);
 }
@@ -373,7 +378,6 @@ void insert_usr_list(char *id)
     strcpy(node->id, id);
     list_add(&node->list, &usr_list);
 
-    /*
     list_for_each_entry(pos, &usr_list, list) {
         if(++i >= LINES - 18) {
             list_del(&pos->list);
@@ -381,7 +385,6 @@ void insert_usr_list(char *id)
             return;
         }
     }
-    */
 
     usr_count++;
 }
@@ -439,26 +442,27 @@ void current_time()
   sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
 }
 
+//info window에 정보를 출력.
 void *info_win_thread(void *data) 
 {
   int n, fd;
   int state;
 
   char buf[255];
+  char *file_name  = "/tmp/top_ten.log";
   struct timeval tv;
 
   fd_set readfds, writefds;
 
-  if(mkfifo("/tmp/top_ten.log", 0644)) {
-    perror("open error : ");
+  if (0 != access(file_name, F_OK)) {
+    mkfifo("/tmp/top_ten.log", 0644);
   }
 
   if((fd = open("/tmp/top_ten.log", O_RDONLY)) == -1 ) {
     perror("file open error : ");
-    exit(0);
   }
 
-  memset(buf, 0x00, 255);
+  //memset(buf, 0x00, 255);
 
   for(;;) {
     FD_ZERO(&readfds);
@@ -475,12 +479,34 @@ void *info_win_thread(void *data)
       if (FD_ISSET(fd, &readfds)) {
         n = read(fd, buf, 255);
       }
-      strtok
-        insert_info_list(buf);
+
+      char top_ten[255];
+      char tmp[10][100] = {};
+      char *token;
+      char *ptr[2];
+      int i = 0;
+
+      strcpy(top_ten, buf);
+      token = strtok_r(top_ten, DELIM, &ptr[0]);
+      while( token )
+        {
+          strcpy(tmp[i], token);
+          token = strtok_r(tmp[i], DELIM, &ptr[1]);
+          while( token )
+            {
+              strcpy(tmp[i], token);
+              token = strtok_r(NULL, DELIM, &ptr[1]);
+            }
+          token = strtok_r(NULL, DELIM, &ptr[0]);
+          i++;
+        }
+
+      for(i=0; i<10; i++) {
+        insert_info_list(tmp[i]);
         update_info_win();
-      memset (buf, 0x00, 255);
-      break;
+        sleep(1);
+      }
     }
-    usleep(1000);
+    //usleep(1000);
   }
 }
