@@ -479,6 +479,7 @@ void *info_win_thread(void *data)
       if (FD_ISSET(fd, &readfds)) {
         n = read(fd, buf, 255);
       }
+<<<<<<< HEAD
 
       char top_ten[255];
       char tmp[10][100] = {};
@@ -506,6 +507,12 @@ void *info_win_thread(void *data)
         update_info_win();
         sleep(1);
       }
+=======
+      insert_info_list(buf);
+      update_info_win();
+      memset (buf, 0x00, 255);
+      break;
+>>>>>>> a252788a7224d11a46927e331d05b130adceaf2e
     }
     //usleep(1000);
   }
