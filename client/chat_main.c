@@ -313,6 +313,7 @@ void update_info_win()
 
     list_for_each_entry(node, &info_list, list) {
       mvwprintw(log_win, (LINES - 42) - i, 2, node->message);
+      //info_win 출력
       if(i < 6) {
         i++;
       }
@@ -454,6 +455,7 @@ void *info_win_thread(void *data)
 
   fd_set readfds, writefds;
 
+  //fifo 파일의 존재 확인
   if (0 != access(file_name, F_OK)) {
     mkfifo("/tmp/top_ten.log", 0644);
   }
@@ -464,6 +466,7 @@ void *info_win_thread(void *data)
 
   //memset(buf, 0x00, 255);
 
+  //select fifo 파일변화 추적
   for(;;) {
     FD_ZERO(&readfds);
     FD_SET(fd, &readfds);
@@ -479,8 +482,8 @@ void *info_win_thread(void *data)
       if (FD_ISSET(fd, &readfds)) {
         n = read(fd, buf, 255);
       }
-<<<<<<< HEAD
 
+      // strtok_r split(/)으로 문자열 파싱
       char top_ten[255];
       char tmp[10][100] = {};
       char *token;
@@ -502,17 +505,14 @@ void *info_win_thread(void *data)
           i++;
         }
 
+      //배열로 할당된 naver_top을 insert_info_list에 전달
       for(i=0; i<10; i++) {
         insert_info_list(tmp[i]);
         update_info_win();
         sleep(1);
       }
-=======
-      insert_info_list(buf);
-      update_info_win();
       memset (buf, 0x00, 255);
       break;
->>>>>>> a252788a7224d11a46927e331d05b130adceaf2e
     }
     //usleep(1000);
   }
