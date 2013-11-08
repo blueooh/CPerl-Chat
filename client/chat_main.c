@@ -475,9 +475,8 @@ void *info_win_thread(void *data)
       if (FD_ISSET(fd, &readfds)) {
         n = read(fd, buf, 255);
       }
-      strtok
-        insert_info_list(buf);
-        update_info_win();
+      insert_info_list(buf);
+      update_info_win();
       memset (buf, 0x00, 255);
       break;
     }

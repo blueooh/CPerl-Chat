@@ -1,8 +1,8 @@
 TARGET=lightchat
-INCS=-I../liblist
+INCS=-I../liblist -I../liblist/include
 OBJS=chat_main.o
 CC=-g -c
-LIB=-L../lib -lncursesw -lpthread -llist
+LIB=-L../lib -lncursesw -lpthread -llist -lcdk
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
