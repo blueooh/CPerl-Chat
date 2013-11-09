@@ -309,12 +309,12 @@ void update_info_win()
 
     delwin(log_win);
     log_win = create_window(LINES - 40, COLS - 17, 0, 16);
-    mvwprintw(log_win, (LINES - 49), 2, title);
 
     list_for_each_entry(node, &info_list, list) {
-      mvwprintw(log_win, (LINES - 42) - i, 2, node->message);
+      mvwprintw(log_win, (LINES - 49), 2, title);
       //info_win 출력
       if(i < 6) {
+        mvwprintw(log_win, (LINES - 42) - i, 2, node->message);
         i++;
       }
       /*
@@ -512,8 +512,7 @@ void *info_win_thread(void *data)
         insert_info_list(tmp[i]);
         sleep(1);
       }
-      break;
-      memset (tmp[i], 0x00, 255);
+      //memset (tmp[i], 0x00, 255);
     }
     //usleep(1000);
   }
