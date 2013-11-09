@@ -317,9 +317,11 @@ void update_info_win()
       if(i < 6) {
         i++;
       }
+      /*
       else {
         i = 0;
       }
+      */
     }
 
     wrefresh(log_win);
@@ -492,27 +494,26 @@ void *info_win_thread(void *data)
 
       strcpy(top_ten, buf);
       token = strtok_r(top_ten, DELIM, &ptr[0]);
-      while( token )
-        {
+
+      while( token ) {
+        strcpy(tmp[i], token);
+        token = strtok_r(tmp[i], DELIM, &ptr[1]);
+        while( token ) {
           strcpy(tmp[i], token);
-          token = strtok_r(tmp[i], DELIM, &ptr[1]);
-          while( token )
-            {
-              strcpy(tmp[i], token);
-              token = strtok_r(NULL, DELIM, &ptr[1]);
-            }
-          token = strtok_r(NULL, DELIM, &ptr[0]);
-          i++;
+          token = strtok_r(NULL, DELIM, &ptr[1]);
         }
+        token = strtok_r(NULL, DELIM, &ptr[0]);
+        i++;
+      }
 
       //배열로 할당된 naver_top을 insert_info_list에 전달
       for(i=0; i<10; i++) {
-        insert_info_list(tmp[i]);
         update_info_win();
+        insert_info_list(tmp[i]);
         sleep(1);
       }
-      memset (buf, 0x00, 255);
       break;
+      memset (tmp[i], 0x00, 255);
     }
     //usleep(1000);
   }
