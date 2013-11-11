@@ -14,6 +14,9 @@ $(TARGET): $(OBJS)
 
 chat_main.o: chat_main.c chat_main.h motd.h
 
+dep:
+	gccmakedep $(INCS) $(SRCS)
+
 clean:
 	rm -rf $(TARGET) $(OBJS)
 	cd ../liblist/;make clean

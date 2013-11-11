@@ -22,6 +22,7 @@
 #define SERVER_ADDRESS "172.30.0.104"
 #endif
 
+#define INFO_PIPE_FILE "/tmp/info_pipe"
 #define SERVER_PORT "8888"
 
 #define MESSAGE_SEPARATOR ": "

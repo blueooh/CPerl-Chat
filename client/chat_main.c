@@ -452,17 +452,17 @@ void *info_win_thread(void *data)
   int state;
 
   char buf[255];
-  char *file_name  = "/tmp/top_ten.log";
+  char *file_name  = INFO_PIPE_FILE;
   struct timeval tv;
 
   fd_set readfds, writefds;
 
   //fifo 파일의 존재 확인
   if (0 != access(file_name, F_OK)) {
-    mkfifo("/tmp/top_ten.log", 0644);
+    mkfifo(file_name, 0644);
   }
 
-  if((fd = open("/tmp/top_ten.log", O_RDONLY)) == -1 ) {
+  if((fd = open(file_name, O_RDONLY)) == -1 ) {
     perror("file open error : ");
   }
 
