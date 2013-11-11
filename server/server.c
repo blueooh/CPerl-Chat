@@ -40,7 +40,7 @@ int main(int argc, char **argv)
         return 1;
     }
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_port = htons(atoi(SERVER_PORT));
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind (sfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
     {

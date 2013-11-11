@@ -10,8 +10,9 @@
 #include <sys/ioctl.h>
 #include <list.h>
 
+#define SERVER_PORT "8888"
 #define SA  struct sockaddr
-#define EPOLL_SIZE      20
+#define EPOLL_SIZE 20
 #define MESSAGE_BUFFER_SIZE 512
 #define ID_SIZE 50
 #define USER_HASH_SIZE 20

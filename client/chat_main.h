@@ -14,8 +14,14 @@
 #include <fcntl.h> 
 #include <stdio.h> 
 
-//#define SERVER_ADDRESS "172.30.0.104"
+//#define TEST
+
+#ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
+#else
+#define SERVER_ADDRESS "172.30.0.104"
+#endif
+
 #define SERVER_PORT "8888"
 
 #define MESSAGE_SEPARATOR ": "
