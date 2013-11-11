@@ -5,6 +5,7 @@ use warnings;
 use LWP::UserAgent;
 use Encode qw(encode decode);
 
+my $top_str = '[-Naver Top 10-]';
 my $rank_url = 'http://openapi.naver.com/search?key=b7d595844816c0b937e204837a33b432&query=nexearch&target=rank';
 
 my $ua = LWP::UserAgent->new;
@@ -19,8 +20,11 @@ else {
 }
 
 my @html_body = $decode_body =~ m{<K>(.*?)</K>}gsm; 
+
 my @top_tens;
 my $i = 1;
+
+push @top_tens, $top_str;
 
 foreach my $p (@html_body) {
     push @top_tens, "$i. $p";
