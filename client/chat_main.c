@@ -10,6 +10,7 @@ char id[ID_SIZE];
 
 unsigned int msg_count;
 unsigned int usr_count;
+unsigned int info_count;
 LIST_HEAD(msg_list);
 LIST_HEAD(usr_list);
 LIST_HEAD(info_list);
@@ -45,7 +46,8 @@ int main(int argc, char *argv[])
     mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2 - 16, motd_4);
     mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2 - 16, motd_5);
     mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 16, motd_6);
-    mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr); mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr); 
+    mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
     mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
     mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
@@ -60,9 +62,9 @@ int main(int argc, char *argv[])
     getstr(srvname);
 
     // 로그&Top10 출력창 생성
-    log_win = create_window(LINES - 40, COLS - 17, 0, 16);
+    log_win = create_window((int)((LINES * 30)/100), COLS - 17, 0, 16);
     // 메시지 출력창 생성
-    show_win = create_window(LINES - 17, COLS - 17, 13, 16); 
+    show_win = create_window((int)((LINES * 70)/100) - 3, COLS - 17, (int)((LINES * 30)/100), 16); 
     // 사용자 목록창 생성 
     ulist_win = create_window(LINES - 4, 15, 0, 0); 
     // 사용자 입력창 생성
@@ -275,20 +277,22 @@ void set_env()
 
 void insert_info_list(char *info)
 {
-    int i = 0;
-    struct info_list_node *node, *pos;
+    int i = 0, line_max = 0;
+    struct info_list_node *node, *tnode;
 
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
     strcpy(node->message, info);
     list_add(&node->list, &info_list);
 
-    list_for_each_entry(pos, &info_list, list) {
-        if(++i >= LINES - 18) {
-            list_del(&pos->list);
-            free(pos);
-            return;
-        }
+    line_max = (int)((LINES * 30)/100) - 5;
+    if(info_count >= line_max) {
+        tnode = list_entry(msg_list.prev, typeof(*tnode), list);
+        list_del(msg_list.prev);
+        free(tnode);
+        return;
     }
+
+    info_count++;
 }
 
 void clear_info_list()
@@ -298,30 +302,20 @@ void clear_info_list()
     list_for_each_entry_safe(node, tnode, &info_list, list) {
         list_del(&node->list);
         free(node);
+        info_count--;
     }
 }
 
 void update_info_win()
 {
     int i = 0;
-    char title[30] = "[-Naver Top 10-]";
     struct info_list_node *node;
 
     delwin(log_win);
-    log_win = create_window(LINES - 40, COLS - 17, 0, 16);
+    log_win = create_window((int)((LINES * 30)/100), COLS - 17, 0, 16);
 
     list_for_each_entry(node, &info_list, list) {
-      mvwprintw(log_win, (LINES - 49), 2, title);
-      //info_win 출력
-      if(i < 6) {
-        mvwprintw(log_win, (LINES - 42) - i, 2, node->message);
-        i++;
-      }
-      /*
-      else {
-        i = 0;
-      }
-      */
+        mvwprintw(log_win, ((int)((LINES * 30)/100) - 2) - (i++), 1, node->message);
     }
 
     wrefresh(log_win);
@@ -329,19 +323,19 @@ void update_info_win()
 
 void insert_msg_list(char *msg)
 {
-    int i = 0;
-    struct msg_list_node *node, *pos;
+    int i = 0, line_max = 0;
+    struct msg_list_node *node, *tnode;
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     strcpy(node->message, msg);
     list_add(&node->list, &msg_list);
 
-    list_for_each_entry(pos, &msg_list, list) {
-        if(++i >= LINES - 18) {
-            list_del(&pos->list);
-            free(pos);
-            return;
-        }
+    line_max = (int)((LINES * 70)/100) - 5;
+    if(msg_count >= line_max) {
+        tnode = list_entry(msg_list.prev, typeof(*tnode), list);
+        list_del(msg_list.prev);
+        free(tnode);
+        return;
     }
 
     msg_count++;
@@ -364,10 +358,10 @@ void update_msg_win()
     struct msg_list_node *node;
 
     delwin(show_win);
-    show_win = create_window(LINES - 17, COLS - 17, 13, 16);
+    show_win = create_window((int)((LINES * 70)/100) - 3, COLS - 17, (int)((LINES * 30)/100), 16); 
 
     list_for_each_entry(node, &msg_list, list)
-        mvwprintw(show_win, LINES - (19 + (i++)), 1, node->message);
+        mvwprintw(show_win, ((int)((LINES * 70)/100) - 5) - (i++), 1, node->message);
 
     wrefresh(show_win);
 }
@@ -382,7 +376,7 @@ void insert_usr_list(char *id)
     list_add(&node->list, &usr_list);
 
     list_for_each_entry(pos, &usr_list, list) {
-        if(++i >= LINES - 18) {
+        if(++i >= ((int)((LINES * 70)/100) - 3)) {
             list_del(&pos->list);
             free(pos);
             return;
@@ -448,72 +442,59 @@ void current_time()
 //info window에 정보를 출력.
 void *info_win_thread(void *data) 
 {
-  int n, fd;
-  int state;
+    int n, fd;
+    int state;
+    char buf[MESSAGE_BUFFER_SIZE];
+    char *parse;
+    char *file_name  = INFO_PIPE_FILE;
+    struct timeval timeout = { .tv_sec = 60, .tv_usec = 0 };
 
-  char buf[255];
-  char *file_name  = INFO_PIPE_FILE;
-  struct timeval tv;
+    fd_set readfds, writefds;
 
-  fd_set readfds, writefds;
+    //fifo 파일의 존재 확인
+    if(!access(file_name, F_OK)) {
+        unlink(file_name);
+    }
 
-  //fifo 파일의 존재 확인
-  if (0 != access(file_name, F_OK)) {
-    mkfifo(file_name, 0644);
-  }
+    if(mkfifo(file_name, 0644) < 0) {
+        perror("mkfifo error : ");
+    }
 
-  if((fd = open(file_name, O_RDONLY)) == -1 ) {
-    perror("file open error : ");
-  }
+    if((fd = open(file_name, O_RDWR)) == -1 ) {
+        perror("file open error : ");
+    }
 
-  //memset(buf, 0x00, 255);
-
-  //select fifo 파일변화 추적
-  for(;;) {
     FD_ZERO(&readfds);
     FD_SET(fd, &readfds);
 
-    state = select(fd+1, &readfds, NULL, NULL, NULL);
-    switch(state) {
-    case -1:
-      perror("select error : ");
-      exit(0);
-      break;
+    //select fifo 파일변화 추적
+    while(1) {
+        system(INFO_SCRIPT_FILE);
+        state = select(fd + 1, &readfds, NULL, NULL, &timeout);
+        switch(state) {
+            case -1:
+                perror("select error : ");
+                exit(0);
+                break;
 
-    default :
-      if (FD_ISSET(fd, &readfds)) {
-        n = read(fd, buf, 255);
-      }
+            default :
+                if(FD_ISSET(fd, &readfds)) {
+                    memset(buf, 0x00, MESSAGE_BUFFER_SIZE);
+                    if(read(fd, buf, MESSAGE_BUFFER_SIZE) < 0) {
+                        break;
+                    }
 
-      // strtok_r split(/)으로 문자열 파싱
-      char top_ten[255];
-      char tmp[10][100] = {};
-      char *token;
-      char *ptr[2];
-      int i = 0;
-
-      strcpy(top_ten, buf);
-      token = strtok_r(top_ten, DELIM, &ptr[0]);
-
-      while( token ) {
-        strcpy(tmp[i], token);
-        token = strtok_r(tmp[i], DELIM, &ptr[1]);
-        while( token ) {
-          strcpy(tmp[i], token);
-          token = strtok_r(NULL, DELIM, &ptr[1]);
+                    parse = strtok(buf, DELIM);
+                    insert_info_list(parse);
+                    update_info_win();
+                    wrefresh(chat_win);
+                    while(parse = strtok(NULL, DELIM)) {
+                        sleep(1);
+                        insert_info_list(parse);
+                        update_info_win();
+                        wrefresh(chat_win);
+                    }
+                }
         }
-        token = strtok_r(NULL, DELIM, &ptr[0]);
-        i++;
-      }
-
-      //배열로 할당된 naver_top을 insert_info_list에 전달
-      for(i=0; i<10; i++) {
-        update_info_win();
-        insert_info_list(tmp[i]);
-        sleep(1);
-      }
-      //memset (tmp[i], 0x00, 255);
     }
-    //usleep(1000);
-  }
 }

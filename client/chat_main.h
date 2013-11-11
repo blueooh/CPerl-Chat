@@ -18,8 +18,10 @@
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
+#define INFO_SCRIPT_FILE "../script/naver_rank.pl"
 #else
 #define SERVER_ADDRESS "172.30.0.104"
+#define INFO_SCRIPT_FILE "/usr/bin/naver_rank"
 #endif
 
 #define INFO_PIPE_FILE "/tmp/info_pipe"

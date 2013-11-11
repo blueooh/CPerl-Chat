@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use LWP::UserAgent;
 use Encode qw(encode decode);
+binmode(STDOUT, ":utf8");
 
 my $top_str = '[-Naver Top 10-]';
 my $rank_url = 'http://openapi.naver.com/search?key=b7d595844816c0b937e204837a33b432&query=nexearch&target=rank';
@@ -32,10 +33,8 @@ foreach my $p (@html_body) {
 }
 
 my $top_ten = join('/', @top_tens);
-print "$top_ten\n";
+#print "$top_ten\n";
 
 my $fp = '/tmp/info_pipe';
 
-open(my $fh, ">", $fp) or die "cannot open > top_ten.log: $!"; 
-print $fh "$top_ten\n";
-close $fh;
+system("echo $top_ten > /tmp/info_pipe");

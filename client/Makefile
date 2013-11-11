@@ -23,6 +23,8 @@ clean:
 
 install:
 	cp ../lib/liblist.so /usr/lib
+	cp ../script/naver_rank.pl /usr/bin/naver_rank
+	chmod 777 /usr/bin/naver_rank
 	cp $(TARGET) /usr/bin
 
 uninstall:
