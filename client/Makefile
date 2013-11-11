@@ -1,5 +1,5 @@
 TARGET=lightchat
-INCS=-I../liblist -I../liblist/include
+INCS=-I../liblist
 OBJS=chat_main.o
 CC=-g -c
 LIB=-L../lib -lncursesw -lpthread -llist -lcdk
