@@ -30,7 +30,7 @@ foreach my $p (@html_body) {
 my $top_ten = join('/', @top_tens);
 print "$top_ten\n";
 
-my $fp = '/tmp/top_ten.log';
+my $fp = '/tmp/info_pipe';
 
 open(my $fh, ">", $fp) or die "cannot open > top_ten.log: $!"; 
 print $fh "$top_ten\n";
