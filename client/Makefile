@@ -2,10 +2,11 @@ TARGET=lightchat
 INCS=-I../liblist
 OBJS=chat_main.o
 CC=-g -c
-LIB=-L../lib -lncursesw -lpthread -llist -lcdk
+LIB=-L../lib -lncursesw -lpthread -llist
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
+	mkdir -p ../lib;
 	cd ../liblist;make;
 	gcc $(INCS) -o $@ $^ $(LIB)
 
