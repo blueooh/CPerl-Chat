@@ -6,6 +6,7 @@ LIB=-L../lib -llist
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
+	mkdir -p ../lib;
 	cd ../liblist;make;
 	gcc $(INCS) -o $@ $^ $(LIB)
 
