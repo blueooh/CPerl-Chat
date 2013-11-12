@@ -284,10 +284,10 @@ void insert_info_list(char *info)
     strcpy(node->message, info);
     list_add(&node->list, &info_list);
 
-    line_max = (int)((LINES * 30)/100) - 5;
+    line_max = (int)((LINES * 30)/100) - 2;
     if(info_count >= line_max) {
-        tnode = list_entry(msg_list.prev, typeof(*tnode), list);
-        list_del(msg_list.prev);
+        tnode = list_entry(info_list.prev, typeof(*tnode), list);
+        list_del(info_list.prev);
         free(tnode);
         return;
     }
@@ -333,7 +333,7 @@ void insert_msg_list(char *msg)
     line_max = (int)((LINES * 70)/100) - 5;
     if(msg_count >= line_max) {
         tnode = list_entry(msg_list.prev, typeof(*tnode), list);
-        list_del(msg_list.prev);
+        list_del(&tnode->list);
         free(tnode);
         return;
     }
