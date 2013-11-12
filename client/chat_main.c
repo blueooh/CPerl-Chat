@@ -277,14 +277,16 @@ void set_env()
 
 void insert_info_list(char *info)
 {
-    int i = 0, line_max = 0;
+    int i = 0, line_max = 0, y, x;
     struct info_list_node *node, *tnode;
+
+    getmaxyx(stdscr, y, x);
 
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
     strcpy(node->message, info);
     list_add(&node->list, &info_list);
 
-    line_max = (int)((LINES * 30)/100) - 2;
+    line_max = (int)((y * 30)/100) - 2;
     if(info_count >= line_max) {
         tnode = list_entry(info_list.prev, typeof(*tnode), list);
         list_del(info_list.prev);
@@ -308,14 +310,16 @@ void clear_info_list()
 
 void update_info_win()
 {
-    int i = 0;
+    int i = 0, y, x;
     struct info_list_node *node;
 
+    getmaxyx(stdscr, y, x);
+
     delwin(log_win);
-    log_win = create_window((int)((LINES * 30)/100), COLS - 17, 0, 16);
+    log_win = create_window((int)((y * 30)/100), x - 17, 0, 16);
 
     list_for_each_entry(node, &info_list, list) {
-        mvwprintw(log_win, ((int)((LINES * 30)/100) - 2) - (i++), 1, node->message);
+        mvwprintw(log_win, ((int)((y * 30)/100) - 2) - (i++), 1, node->message);
     }
 
     wrefresh(log_win);
@@ -323,14 +327,16 @@ void update_info_win()
 
 void insert_msg_list(char *msg)
 {
-    int i = 0, line_max = 0;
+    int i = 0, line_max = 0, y, x;
     struct msg_list_node *node, *tnode;
+
+    getmaxyx(stdscr, y, x);
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     strcpy(node->message, msg);
     list_add(&node->list, &msg_list);
 
-    line_max = (int)((LINES * 70)/100) - 5;
+    line_max = (int)((y * 70)/100) - 5;
     if(msg_count >= line_max) {
         tnode = list_entry(msg_list.prev, typeof(*tnode), list);
         list_del(&tnode->list);
@@ -354,33 +360,37 @@ void clear_msg_list()
 
 void update_msg_win()
 {
-    int i = 0;
+    int i = 0, y, x;
     struct msg_list_node *node;
 
+    getmaxyx(stdscr, y, x);
+
     delwin(show_win);
-    show_win = create_window((int)((LINES * 70)/100) - 3, COLS - 17, (int)((LINES * 30)/100), 16); 
+    show_win = create_window((int)((y * 70)/100) - 3, x - 17, (int)((y * 30)/100), 16); 
 
     list_for_each_entry(node, &msg_list, list)
-        mvwprintw(show_win, ((int)((LINES * 70)/100) - 5) - (i++), 1, node->message);
+        mvwprintw(show_win, ((int)((y * 70)/100) - 5) - (i++), 1, node->message);
 
     wrefresh(show_win);
 }
 
 void insert_usr_list(char *id)
 {
-    int i = 0;
-    struct usr_list_node *node, *pos;
+    int i = 0, line_max = 0, y, x;
+    struct usr_list_node *node, *tnode;
+
+    getmaxyx(stdscr, y, x);
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
     strcpy(node->id, id);
     list_add(&node->list, &usr_list);
 
-    list_for_each_entry(pos, &usr_list, list) {
-        if(++i >= ((int)((LINES * 70)/100) - 3)) {
-            list_del(&pos->list);
-            free(pos);
-            return;
-        }
+    line_max = y - 2;
+    if(msg_count >= line_max) {
+        tnode = list_entry(usr_list.prev, typeof(*tnode), list);
+        list_del(&tnode->list);
+        free(tnode);
+        return;
     }
 
     usr_count++;
@@ -412,11 +422,13 @@ void clear_usr_list()
 
 void update_usr_win()
 {
-    int i = 0;
+    int i = 0, y, x;
     struct usr_list_node *node;
 
+    getmaxyx(stdscr, y, x);
+
     delwin(ulist_win);
-    ulist_win = create_window(LINES - 4, 15, 0, 0); 
+    ulist_win = create_window(y - 4, 15, 0, 0); 
 
     list_for_each_entry_reverse(node, &usr_list, list)
         mvwprintw(ulist_win, 1 + (i++), 1, node->id);
