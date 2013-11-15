@@ -297,7 +297,7 @@ void insert_info_list(char *info)
     pthread_mutex_lock(&info_list_lock);
     if(info_count >= line_max) {
         tnode = list_entry(info_list.prev, typeof(*tnode), list);
-        list_del(info_list.prev);
+        list_del(&tnode->list);
         free(tnode);
         pthread_mutex_unlock(&info_list_lock);
         return;
