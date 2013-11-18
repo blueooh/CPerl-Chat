@@ -1,5 +1,5 @@
-#include "chat_main.h"
-#include "motd.h"
+#include <chat_main.h>
+#include <motd.h>
 
 WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     }
 
     connect_server();
-    ms.state = MSG_NEWUSER_STATE;
+    ms.state = MSG_NEWCONNECT_STATE;
     strcpy(ms.message, str);
     write(sock, (char *)&ms, sizeof(msgst));
 
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
                 }
                 // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
                 // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
-                ms.state = MSG_NEWUSER_STATE;
+                ms.state = MSG_NEWCONNECT_STATE;
                 write(sock, (char *)&ms, sizeof(msgst));
             } else if(!strcmp("/disconnect", str)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
@@ -202,6 +202,7 @@ void *rcv_thread(void *data) {
     int read_len;
     msgst ms;
     char message_buf[TOTAL_MESSAGE_SIZE];
+    char *usr_id;
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
@@ -210,33 +211,45 @@ void *rcv_thread(void *data) {
         } else {
             // 서버로 부터 온 메시지의 종류를 구별한다.
             switch(ms.state) {
-                // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
                 case MSG_ALAM_STATE:
+                    // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
                     strcpy(message_buf, ms.message);
                     break;
-                    // 서버로 부터 사용자들의 메시지를 전달 받을 때
                 case MSG_DATA_STATE:
+                    // 서버로 부터 사용자들의 메시지를 전달 받을 때
                     current_time();
                     strcpy(message_buf, time_buf);
                     strcat(message_buf, ms.id);
                     strcat(message_buf, MESSAGE_SEPARATOR);
                     strcat(message_buf, ms.message);
                     break;
-                    // 서버로 부터 새로운 사용자에 대한 알림.
-                case MSG_NEWUSER_STATE:
-                    insert_usr_list(ms.id);
+                case MSG_USERLIST_STATE:
+                    // 서버로 부터 전체 사용자 목록을 받을 때
+                    usr_id = strtok(ms.message, USER_DELIM);
+                    insert_usr_list(usr_id);
+                    while(usr_id = strtok(NULL, USER_DELIM)) {
+                        insert_usr_list(usr_id);
+                    }
                     update_usr_win();
-                    if(usr_state == USER_LOGIN_STATE) {
+                    wrefresh(chat_win);
+                    usr_state = USER_LOGIN_STATE;
+                    continue;
+                case MSG_NEWUSER_STATE:
+                    // 서버로 부터 새로운 사용자에 대한 알림.
+                    if(strcmp(id, ms.id)) {
+                        insert_usr_list(ms.id);
+                        update_usr_win();
+
                         current_time();
                         strcpy(message_buf, time_buf);
                         strcat(message_buf, ms.id);
                         strcat(message_buf, "님이 입장하셨습니다!");
                         break;
-                    } 
-                    wrefresh(chat_win);
-                    continue;
-                    // 서버로 부터 연결 해제된 사용자에 대한 알림.
+                    } else {
+                        continue;
+                    }
                 case MSG_DELUSER_STATE:
+                    // 서버로 부터 연결 해제된 사용자에 대한 알림.
                     delete_usr_list(ms.id);
                     update_usr_win();
                     current_time();
@@ -244,16 +257,13 @@ void *rcv_thread(void *data) {
                     strcat(message_buf, ms.id);
                     strcat(message_buf, "님이 퇴장하셨습니다!");
                     break;
-                    // 서버로 부터 사용자 목록 모두 받은 후 끝이라는 것을 받음.
-                case MSG_ENDUSER_STATE:
-                    usr_state = USER_LOGIN_STATE;
-                    continue;
             }
+
+            // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
+            insert_msg_list(message_buf);
+            update_msg_win();
+            wrefresh(chat_win);
         }
-        // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-        insert_msg_list(message_buf);
-        update_msg_win();
-        wrefresh(chat_win);
     }
 }
 

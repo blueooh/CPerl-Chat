@@ -1,5 +1,5 @@
 TARGET=lightchatd
-INCS=-I../liblist
+INCS=-I../liblist -I../include
 OBJS=server.o
 CC=-g -c
 LIB=-L../lib -llist
@@ -13,7 +13,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-server.o: server.c server.h
+server.o: server.c
 
 clean:
 	rm -rf $(TARGET) $(OBJS)

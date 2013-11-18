@@ -1,5 +1,5 @@
 TARGET=lightchat
-INCS=-I../liblist
+INCS=-I../liblist -I../include
 OBJS=chat_main.o
 CC=-g -c
 LIB=-L../lib -lncursesw -lpthread -llist
@@ -13,7 +13,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-chat_main.o: chat_main.c chat_main.h motd.h
+chat_main.o: chat_main.c
 
 dep:
 	gccmakedep $(INCS) $(SRCS)

@@ -1,4 +1,4 @@
-#include "server.h"
+#include <server.h>
 
 struct list_head usr_list[USER_HASH_SIZE];
 
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
             if (events[i].data.fd == sfd)
             {
                 msgst ms;
-                char *msg = "접속에 성공했습니다!";
+                char *msg = "Welcome LightChat World!";
 
                 cfd = accept(sfd, (SA *)&clientaddr, &clilen);
                 ev.events = EPOLLIN;
@@ -128,9 +128,11 @@ int main(int argc, char **argv)
                 {
                     ud usr_data;
                     msgst tmp_ms;
+                    char users[MESSAGE_BUFFER_SIZE];
+                    int idx = 0;
 
                     switch(rcv_ms.state) {
-                        case MSG_NEWUSER_STATE:
+                        case MSG_NEWCONNECT_STATE:
                             printf("Log in user(%s)\n", rcv_ms.id);
                             usr_data.sock = events[i].data.fd;
                             strcpy(usr_data.id, rcv_ms.id);
@@ -143,30 +145,23 @@ int main(int argc, char **argv)
                             // 사용자를 리스트에 추가
                             insert_usr_list(usr_data);
 
-                            tmp_ms.state = MSG_NEWUSER_STATE;
-                            // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.
+                            // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
+                            tmp_ms.state = MSG_USERLIST_STATE;
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
-                                    strcpy(tmp_ms.id, node->data.id);
-                                    write(events[i].data.fd, (char *)&tmp_ms, sizeof(msgst));
+                                    idx += sprintf(users + idx, "%s%c", node->data.id, USER_DELIM);
                                 }
                             }
-                            // 접속한 사용자를 모두 전송했다는 메시지를 보낸다.
-                            tmp_ms.state = MSG_ENDUSER_STATE;
+                            users[idx] = '\0';
+                            strcpy(tmp_ms.message, users);
                             write(events[i].data.fd, (char *)&tmp_ms, sizeof(msgst));
 
-                            // 다른 접속자들에게 새로운 사용자의 접속을 알린다.
-                            for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-                                list_for_each_entry(node, &usr_list[hash], list) {
-                                    if(node->data.sock != events[i].data.fd) {
-                                        write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
-                                    }
-                                }
-                            }
-
-                            continue;
+                            // 접속자들에게 새로운 사용자의 접속을 알린다.
+                            rcv_ms.state = MSG_NEWUSER_STATE;
+                            break;
                     }
 
+                    // 모든 사용자에게 서버가 받은 메시지를 전달
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                         list_for_each_entry(node, &usr_list[hash], list) {
                             write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
