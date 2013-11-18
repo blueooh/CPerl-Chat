@@ -149,7 +149,7 @@ int main(int argc, char **argv)
                             tmp_ms.state = MSG_USERLIST_STATE;
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
-                                    idx += sprintf(users + idx, "%s%c", node->data.id, USER_DELIM);
+                                    idx += sprintf(users + idx, "%s%s", node->data.id, USER_DELIM);
                                 }
                             }
                             users[idx] = '\0';
