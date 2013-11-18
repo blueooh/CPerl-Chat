@@ -7,6 +7,8 @@ pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
+char exec_plug_name[MESSAGE_BUFFER_SIZE];
+char *plug_name = "../script/naver_rank";
 
 pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -30,6 +32,7 @@ int main(int argc, char *argv[])
     char *srv_name_scr = "Server Name: ";
     char *time_msg_scr = "Acess Time:";
     char *current_time_scr = time_buf;
+    char *argv_parse;
     msgst ms;
 
     current_time();
@@ -131,6 +134,12 @@ int main(int argc, char *argv[])
                 update_msg_win();
                 usr_state = USER_LOGOUT_STATE;
                 continue;
+            } else if(!strncmp("/exec", str, 5)) {
+              argv_parse = strtok(str, EXEC_DELIM);
+              argv_parse = strtok(NULL, EXEC_DELIM);
+              sprintf(exec_plug_name, "%s%s", INFO_SCRIPT_PATH, argv_parse);
+              plug_name = exec_plug_name;
+
             } else if(!strcmp("/clear", str)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
@@ -498,7 +507,7 @@ void *info_win_thread(void *data)
 
     //select fifo 파일변화 추적
     while(1) {
-        system(INFO_SCRIPT_FILE);
+        system(plug_name);
         state = select(fd + 1, &readfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:

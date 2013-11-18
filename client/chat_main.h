@@ -14,14 +14,14 @@
 #include <fcntl.h> 
 #include <stdio.h> 
 
-//#define TEST
+#define TEST
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
-#define INFO_SCRIPT_FILE "../script/naver_rank.pl"
+#define INFO_SCRIPT_PATH "../script/"
 #else
 #define SERVER_ADDRESS "172.30.0.104"
-#define INFO_SCRIPT_FILE "/usr/bin/naver_rank"
+#define INFO_SCRIPT_PATH "/usr/bin/"
 #endif
 
 #define INFO_PIPE_FILE "/tmp/info_pipe"
@@ -29,6 +29,7 @@
 
 #define MESSAGE_SEPARATOR ": "
 #define DELIM "/"
+#define EXEC_DELIM " "
 
 #define SERVER_NAME_SIZE 30
 #define TIME_BUFFER_SIZE 10

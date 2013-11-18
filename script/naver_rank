@@ -7,7 +7,8 @@ use Encode qw(encode decode);
 binmode(STDOUT, ":utf8");
 
 my $top_str = '[-Naver Top 10-]';
-my $rank_url = 'http://openapi.naver.com/search?key=b7d595844816c0b937e204837a33b432&query=nexearch&target=rank';
+#my $rank_url = 'http://openapi.naver.com/search?key=b7d595844816c0b937e204837a33b432&query=nexearch&target=rank';
+my $rank_url = 'http://openapi.naver.com/search?key=c1b406b32dbbbbeee5f2a36ddc14067f&query=nexearch&target=rank';
 
 my $ua = LWP::UserAgent->new;
 my $resp = $ua->get($rank_url);
@@ -33,8 +34,4 @@ foreach my $p (@html_body) {
 }
 
 my $top_ten = join('/', @top_tens);
-#print "$top_ten\n";
-
-my $fp = '/tmp/info_pipe';
-
 system("echo $top_ten > /tmp/info_pipe");
