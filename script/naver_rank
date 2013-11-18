@@ -33,8 +33,4 @@ foreach my $p (@html_body) {
 }
 
 my $top_ten = join('/', @top_tens);
-#print "$top_ten\n";
-
-my $fp = '/tmp/info_pipe';
-
 system("echo $top_ten > /tmp/info_pipe");

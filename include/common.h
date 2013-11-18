@@ -1,8 +1,9 @@
-//#define TEST
+#define TEST
 #define INFO_PIPE_FILE "/tmp/info_pipe"
 #define MESSAGE_SEPARATOR ": "
 #define DELIM "/"
 #define USER_DELIM ":"
+#define EXEC_DELIM " "
 #define SERVER_NAME_SIZE 30
 #define TIME_BUFFER_SIZE 10
 #define ID_SIZE 50

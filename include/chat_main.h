@@ -17,10 +17,10 @@
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
-#define INFO_SCRIPT_FILE "../script/naver_rank.pl"
+#define INFO_SCRIPT_PATH "../script/"
 #else
 #define SERVER_ADDRESS "172.30.0.104"
-#define INFO_SCRIPT_FILE "/usr/bin/naver_rank"
+#define INFO_SCRIPT_PATH "/usr/bin/"
 #endif
 #define SERVER_PORT "8888"
 
