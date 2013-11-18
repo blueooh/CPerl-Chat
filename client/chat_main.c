@@ -284,27 +284,15 @@ void set_env()
 
 void insert_info_list(char *info)
 {
-    int i = 0, line_max = 0, y, x;
-    struct info_list_node *node, *tnode;
-
-    getmaxyx(stdscr, y, x);
-    line_max = (int)((y * 30)/100) - 2;
+    struct info_list_node *node;
 
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
     strcpy(node->message, info);
-    list_add(&node->list, &info_list);
 
     pthread_mutex_lock(&info_list_lock);
-    if(info_count >= line_max) {
-        tnode = list_entry(info_list.prev, typeof(*tnode), list);
-        list_del(&tnode->list);
-        free(tnode);
-        pthread_mutex_unlock(&info_list_lock);
-        return;
-    }
-    pthread_mutex_unlock(&info_list_lock);
-
+    list_add(&node->list, &info_list);
     info_count++;
+    pthread_mutex_unlock(&info_list_lock);
 }
 
 void clear_info_list()
@@ -322,16 +310,23 @@ void clear_info_list()
 
 void update_info_win()
 {
-    int i = 0, y, x;
-    struct info_list_node *node;
+    int i = 0, cline = 0, line_max = 0, y, x;
+    struct info_list_node *node, *tnode;
 
     getmaxyx(stdscr, y, x);
 
     delwin(log_win);
     log_win = create_window((int)((y * 30)/100), x - 17, 0, 16);
 
+    line_max = (int)((y * 30)/100) - 1;
+
     pthread_mutex_lock(&info_list_lock);
-    list_for_each_entry(node, &info_list, list) {
+    list_for_each_entry_safe(node, tnode, &info_list, list) {
+        if(++cline >= line_max) {
+            list_del(&node->list);
+            free(node);
+            continue;
+        }
         mvwprintw(log_win, ((int)((y * 30)/100) - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&info_list_lock);
@@ -341,26 +336,13 @@ void update_info_win()
 
 void insert_msg_list(char *msg)
 {
-    int i = 0, line_max = 0, y, x;
     struct msg_list_node *node, *tnode;
-
-    getmaxyx(stdscr, y, x);
-    line_max = (int)((y * 70)/100) - 5;
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     strcpy(node->message, msg);
 
     pthread_mutex_lock(&msg_list_lock);
     list_add(&node->list, &msg_list);
-
-    if(msg_count >= line_max) {
-        tnode = list_entry(msg_list.prev, typeof(*tnode), list);
-        list_del(&tnode->list);
-        free(tnode);
-        pthread_mutex_unlock(&msg_list_lock);
-        return;
-    }
-
     msg_count++;
     pthread_mutex_unlock(&msg_list_lock);
 }
@@ -380,17 +362,25 @@ void clear_msg_list()
 
 void update_msg_win()
 {
-    int i = 0, y, x;
-    struct msg_list_node *node;
+    int i = 0, cline = 0, line_max = 0, y, x;
+    struct msg_list_node *node, *tnode;
 
     getmaxyx(stdscr, y, x);
 
     delwin(show_win);
     show_win = create_window((int)((y * 70)/100) - 3, x - 17, (int)((y * 30)/100), 16); 
 
+    line_max = (int)((y * 70)/100) - 4;
+
     pthread_mutex_lock(&msg_list_lock);
-    list_for_each_entry(node, &msg_list, list)
+    list_for_each_entry_safe(node, tnode, &msg_list, list) {
+        if(++cline >= line_max) {
+            list_del(&node->list);
+            free(node);
+            continue;
+        }
         mvwprintw(show_win, ((int)((y * 70)/100) - 5) - (i++), 1, node->message);
+    }
     pthread_mutex_unlock(&msg_list_lock);
 
     wrefresh(show_win);
@@ -398,26 +388,13 @@ void update_msg_win()
 
 void insert_usr_list(char *id)
 {
-    int i = 0, line_max = 0, y, x;
-    struct usr_list_node *node, *tnode;
-
-    getmaxyx(stdscr, y, x);
+    struct usr_list_node *node;
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
     strcpy(node->id, id);
 
     pthread_mutex_lock(&usr_list_lock);
     list_add(&node->list, &usr_list);
-
-    line_max = y - 2;
-    if(msg_count >= line_max) {
-        tnode = list_entry(usr_list.prev, typeof(*tnode), list);
-        list_del(&tnode->list);
-        free(tnode);
-        pthread_mutex_unlock(&usr_list_lock);
-        return;
-    }
-
     usr_count++;
     pthread_mutex_unlock(&usr_list_lock);
 }
@@ -453,17 +430,24 @@ void clear_usr_list()
 
 void update_usr_win()
 {
-    int i = 0, y, x;
-    struct usr_list_node *node;
+    int i = 0, cline = 0, line_max = 0, y, x;
+    struct usr_list_node *node, *tnode;
 
     getmaxyx(stdscr, y, x);
 
     delwin(ulist_win);
     ulist_win = create_window(y - 4, 15, 0, 0); 
 
+    line_max = y - 4;
     pthread_mutex_lock(&usr_list_lock);
-    list_for_each_entry_reverse(node, &usr_list, list)
+    list_for_each_entry_safe(node, tnode, &usr_list, list) {
+        if(++cline >= line_max) {
+            list_del(&node->list);
+            free(node);
+            continue;
+        }
         mvwprintw(ulist_win, 1 + (i++), 1, node->id);
+    }
     pthread_mutex_unlock(&usr_list_lock);
 
     wrefresh(ulist_win);
