@@ -169,9 +169,7 @@ void print_error(char* err_msg)
 {
     char buf[MESSAGE_BUFFER_SIZE];
 
-    strcpy(buf, "ERROR: ");
-    strcat(buf, err_msg);
-
+    sprintf(buf, "%s%s", "ERROR: ", err_msg);
     insert_msg_list(buf);
     update_msg_win();
 }
@@ -227,10 +225,7 @@ void *rcv_thread(void *data) {
                 case MSG_DATA_STATE:
                     // 서버로 부터 사용자들의 메시지를 전달 받을 때
                     current_time();
-                    strcpy(message_buf, time_buf);
-                    strcat(message_buf, ms.id);
-                    strcat(message_buf, MESSAGE_SEPARATOR);
-                    strcat(message_buf, ms.message);
+                    sprintf(message_buf, "%s%s%s%s", time_buf, ms.id,MESSAGE_SEPARATOR, ms.message);
                     break;
                 case MSG_USERLIST_STATE:
                     // 서버로 부터 전체 사용자 목록을 받을 때
@@ -248,11 +243,8 @@ void *rcv_thread(void *data) {
                     if(strcmp(id, ms.id)) {
                         insert_usr_list(ms.id);
                         update_usr_win();
-
                         current_time();
-                        strcpy(message_buf, time_buf);
-                        strcat(message_buf, ms.id);
-                        strcat(message_buf, "님이 입장하셨습니다!");
+                        sprintf(message_buf, "%s%s%s", time_buf, ms.id, "님이 입장하셨습니다!");
                         break;
                     } else {
                         continue;
@@ -262,9 +254,7 @@ void *rcv_thread(void *data) {
                     delete_usr_list(ms.id);
                     update_usr_win();
                     current_time();
-                    strcpy(message_buf, time_buf);
-                    strcat(message_buf, ms.id);
-                    strcat(message_buf, "님이 퇴장하셨습니다!");
+                    sprintf(message_buf, "%s%s%s", time_buf, ms.id, "님이 퇴장하셨습니다!");
                     break;
             }
 
