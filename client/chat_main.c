@@ -1,7 +1,7 @@
 #include <chat_main.h>
 #include <motd.h>
 
-WINDOW *log_win, *show_win, *ulist_win, *chat_win;
+WINDOW *weather_win, *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
@@ -89,6 +89,15 @@ int main(int argc, char *argv[])
     ms.state = MSG_NEWCONNECT_STATE;
     strcpy(ms.message, str);
     write(sock, (char *)&ms, sizeof(msgst));
+    /*
+    start_color();
+    init_pair(1, COLOR_BLACK, COLOR_RED);
+    init_pair(2, COLOR_BLACK, COLOR_GREEN);
+    attron(COLOR_PAIR(1));
+    attron(COLOR_PAIR(2));
+    refresh();
+    getch();
+    */
 
     while(1) {
         // 커서위치 초기화
