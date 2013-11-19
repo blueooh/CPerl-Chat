@@ -1,5 +1,4 @@
-bluechat
+CPerl-Chat
 ========
 
-bluechat.
-good jobs.
+C + Perl Chat
