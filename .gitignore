@@ -2,5 +2,5 @@ tags
 *.o
 *.swp
 *.so
-client/lightchat
-server/lightchatd
+client/cperl-chat
+server/cperl-chatd

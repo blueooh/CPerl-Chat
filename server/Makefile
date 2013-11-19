@@ -1,4 +1,4 @@
-TARGET=lightchatd
+TARGET=cperl-chatd
 INCS=-I../liblist -I../include
 OBJS=server.o
 CC=-g -c

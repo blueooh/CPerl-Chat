@@ -1,4 +1,4 @@
-TARGET=lightchat
+TARGET=cperl-chat
 INCS=-I../liblist -I../include
 OBJS=chat_main.o
 CC=-g -c
