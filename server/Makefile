@@ -13,7 +13,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-server.o: server.c
+server.o: server.c ../include/server.h ../include/common.h
 
 clean:
 	rm -rf $(TARGET) $(OBJS)

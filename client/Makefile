@@ -13,7 +13,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-chat_main.o: chat_main.c
+chat_main.o: chat_main.c ../include/chat_main.h ../include/common.h ../include/motd.h
 
 dep:
 	gccmakedep $(INCS) $(SRCS)
