@@ -7,8 +7,7 @@ pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
-char exec_plug_name[MESSAGE_BUFFER_SIZE];
-char *plug_name = "../script/naver_rank";
+char plugin_file[FILE_NAME_MAX];
 
 pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -21,7 +20,6 @@ unsigned int info_count;
 LIST_HEAD(msg_list);
 LIST_HEAD(usr_list);
 LIST_HEAD(info_list);
-
 
 int main(int argc, char *argv[])
 {
@@ -39,6 +37,9 @@ int main(int argc, char *argv[])
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
+
+    // 초기 플러그인 스크립트 이름 정의
+    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "weather");
 
     // Locale 환경 셋팅
     set_env();
@@ -123,6 +124,7 @@ int main(int argc, char *argv[])
                 // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
                 ms.state = MSG_NEWCONNECT_STATE;
                 write(sock, (char *)&ms, sizeof(msgst));
+
             } else if(!strcmp("/disconnect", str)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
                 pthread_cancel(rcv_pthread);
@@ -133,21 +135,30 @@ int main(int argc, char *argv[])
                 insert_msg_list("disconnected!");
                 update_msg_win();
                 usr_state = USER_LOGOUT_STATE;
-                continue;
-            } else if(!strncmp("/exec", str, 5)) {
-              argv_parse = strtok(str, EXEC_DELIM);
-              argv_parse = strtok(NULL, EXEC_DELIM);
-              sprintf(exec_plug_name, "%s%s", INFO_SCRIPT_PATH, argv_parse);
-              plug_name = exec_plug_name;
+
+            } else if(!strncmp("/script", str, 7)) {
+                char tfile[FILE_NAME_MAX], tbuf[MESSAGE_BUFFER_SIZE];
+
+                argv_parse = strtok(str, EXEC_DELIM);
+                argv_parse = strtok(NULL, EXEC_DELIM);
+                sprintf(tfile, "%s%s", INFO_SCRIPT_PATH, argv_parse);
+                if(!access(tfile, R_OK | X_OK)) {
+                    strcpy(plugin_file, tfile);
+                } else {
+                    sprintf(tbuf, "error: %s cannot be loaded!", tfile);
+                    insert_info_list(tbuf);
+                    update_info_win();
+                }
 
             } else if(!strcmp("/clear", str)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
                 update_msg_win();
-                continue;
+
             } else if(!strcmp("/exit", str)) {
                 break;
             } 
+
         } else {
             // 로그인 상태일때만 서버에 메시지를 전달하게 된다.
             if(usr_state == USER_LOGIN_STATE) {
@@ -507,7 +518,7 @@ void *info_win_thread(void *data)
 
     //select fifo 파일변화 추적
     while(1) {
-        system(plug_name);
+        system(plugin_file);
         state = select(fd + 1, &readfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
