@@ -13,6 +13,8 @@ pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_mutex_t chat_win_lock = PTHREAD_MUTEX_INITIALIZER;
+
 unsigned int msg_count;
 unsigned int usr_count;
 unsigned int info_count;
@@ -95,8 +97,10 @@ int main(int argc, char *argv[])
         move(LINES - 2, 1);
         mvwgetstr(chat_win, 1, 1, str);
         // 입력이 완료되면 문자열을 화면에서 지우기 위해 사용자 입력창을 재 생성 한다.
+        pthread_mutex_lock(&chat_win_lock);
         delwin(chat_win);
         chat_win = create_window(3, COLS - 1, LINES - 3, 0);
+        pthread_mutex_unlock(&chat_win_lock);
 
         // 아무값이 없는 입력은 무시
         if(!strlen(str)) 
@@ -245,7 +249,9 @@ void *rcv_thread(void *data) {
                         insert_usr_list(usr_id);
                     }
                     update_usr_win();
+                    pthread_mutex_lock(&chat_win_lock);
                     wrefresh(chat_win);
+                    pthread_mutex_unlock(&chat_win_lock);
                     usr_state = USER_LOGIN_STATE;
                     continue;
                 case MSG_NEWUSER_STATE:
@@ -271,7 +277,9 @@ void *rcv_thread(void *data) {
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
             insert_msg_list(message_buf);
             update_msg_win();
+            pthread_mutex_lock(&chat_win_lock);
             wrefresh(chat_win);
+            pthread_mutex_unlock(&chat_win_lock);
         }
     }
 }
@@ -535,12 +543,16 @@ void *info_win_thread(void *data)
                     parse = strtok(buf, DELIM);
                     insert_info_list(parse);
                     update_info_win();
+                    pthread_mutex_lock(&chat_win_lock);
                     wrefresh(chat_win);
+                    pthread_mutex_unlock(&chat_win_lock);
                     while(parse = strtok(NULL, DELIM)) {
                         sleep(1);
                         insert_info_list(parse);
                         update_info_win();
+                        pthread_mutex_lock(&chat_win_lock);
                         wrefresh(chat_win);
+                        pthread_mutex_unlock(&chat_win_lock);
                     }
                 }
         }
