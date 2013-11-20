@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 
     // Ncurses 환경 초기화
     initscr();
-    cbreak();
     refresh();
 
     // 첫 실행 화면 출력
