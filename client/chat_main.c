@@ -1,6 +1,7 @@
 #include <chat_main.h>
 #include <motd.h>
 
+static int term_y = 0, term_x = 0;
 WINDOW *log_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread, info_win_pthread;
@@ -14,6 +15,9 @@ pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t chat_win_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_win_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t show_win_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ulist_win_lock = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned int msg_count;
 unsigned int usr_count;
@@ -22,6 +26,24 @@ unsigned int info_count;
 LIST_HEAD(msg_list);
 LIST_HEAD(usr_list);
 LIST_HEAD(info_list);
+
+void *resize_handler(int sig)
+{
+    struct winsize w;
+
+    ioctl(0, TIOCGWINSZ, &w);
+
+    term_y = w.ws_row;
+    term_x = w.ws_col;
+
+    clear();
+    refresh();
+
+    update_msg_win();
+    update_usr_win();
+    update_info_win();
+    update_chat_win();
+}
 
 int main(int argc, char *argv[])
 {
@@ -35,13 +57,15 @@ int main(int argc, char *argv[])
     char *argv_parse;
     msgst ms;
 
+    signal(SIGWINCH, resize_handler);
+
     current_time();
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
 
     // 초기 플러그인 스크립트 이름 정의
-    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "weather");
+    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "naver_rank");
 
     // Locale 환경 셋팅
     set_env();
@@ -49,6 +73,9 @@ int main(int argc, char *argv[])
     // Ncurses 환경 초기화
     initscr();
     refresh();
+
+    term_y = LINES;
+    term_x = COLS;
 
     // 첫 실행 화면 출력
     mvwprintw(stdscr, LINES/2 - 8, (COLS - strlen(first_scr))/2 - 16, motd_1);
@@ -88,19 +115,12 @@ int main(int argc, char *argv[])
     }
 
     connect_server();
-    ms.state = MSG_NEWCONNECT_STATE;
-    strcpy(ms.message, str);
-    write(sock, (char *)&ms, sizeof(msgst));
 
     while(1) {
-        // 커서위치 초기화
-        move(LINES - 2, 1);
-        mvwgetstr(chat_win, 1, 1, str);
         // 입력이 완료되면 문자열을 화면에서 지우기 위해 사용자 입력창을 재 생성 한다.
-        pthread_mutex_lock(&chat_win_lock);
-        delwin(chat_win);
-        chat_win = create_window(3, COLS - 1, LINES - 3, 0);
-        pthread_mutex_unlock(&chat_win_lock);
+        update_chat_win();
+        // 사용자의 입력을 받음.
+        mvwgetstr(chat_win, 1, 1, str);
 
         // 아무값이 없는 입력은 무시
         if(!strlen(str)) 
@@ -123,10 +143,6 @@ int main(int argc, char *argv[])
                 if(connect_server() < 0) {
                     continue;
                 }
-                // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
-                // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
-                ms.state = MSG_NEWCONNECT_STATE;
-                write(sock, (char *)&ms, sizeof(msgst));
 
             } else if(!strcmp("/disconnect", str)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
@@ -192,6 +208,7 @@ int connect_server()
 {
     struct sockaddr_in srv_addr;
     int thr_id;
+    msgst ms;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(!sock) {
@@ -215,6 +232,12 @@ int connect_server()
         close(sock);
         return -1;
     }
+
+    // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
+    // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
+    ms.state = MSG_NEWCONNECT_STATE;
+    strcpy(ms.id, id);
+    write(sock, (char *)&ms, sizeof(msgst));
 
     return 0;
 }
@@ -290,6 +313,7 @@ WINDOW *create_window(int h, int w, int y, int x)
 
     win = newwin(h, w, y, x);
     box(win, 0, 0);
+    wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(win);
 
     return win;
@@ -337,15 +361,17 @@ void clear_info_list()
 
 void update_info_win()
 {
-    int i = 0, cline = 0, line_max = 0, y, x;
+    int i = 0, cline = 0, line_max = 0;
     struct info_list_node *node, *tnode;
 
-    getmaxyx(stdscr, y, x);
+    pthread_mutex_lock(&log_win_lock);
+    log_win = create_window((int)((term_y * 30)/100), term_x - 17, 0, 16);
+    werase(log_win);
+    wresize(log_win, (int)((term_y * 30)/100), term_x - 17);
+    mvwin(log_win, 0, 16);
+    wborder(log_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    delwin(log_win);
-    log_win = create_window((int)((y * 30)/100), x - 17, 0, 16);
-
-    line_max = (int)((y * 30)/100) - 1;
+    line_max = (int)((term_y * 30)/100) - 1;
 
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
@@ -354,11 +380,12 @@ void update_info_win()
             free(node);
             continue;
         }
-        mvwprintw(log_win, ((int)((y * 30)/100) - 2) - (i++), 1, node->message);
+        mvwprintw(log_win, ((int)((term_y * 30)/100) - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&info_list_lock);
 
     wrefresh(log_win);
+    pthread_mutex_unlock(&log_win_lock);
 }
 
 void insert_msg_list(char *msg)
@@ -389,15 +416,16 @@ void clear_msg_list()
 
 void update_msg_win()
 {
-    int i = 0, cline = 0, line_max = 0, y, x;
+    int i = 0, cline = 0, line_max = 0;
     struct msg_list_node *node, *tnode;
 
-    getmaxyx(stdscr, y, x);
+    pthread_mutex_lock(&show_win_lock);
+    werase(show_win);
+    wresize(show_win, (int)((term_y * 70)/100) - 3, term_x - 17);
+    mvwin(show_win, (int)((term_y * 30)/100), 16);
+    wborder(show_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    delwin(show_win);
-    show_win = create_window((int)((y * 70)/100) - 3, x - 17, (int)((y * 30)/100), 16); 
-
-    line_max = (int)((y * 70)/100) - 4;
+    line_max = (int)((term_y * 70)/100) - 4;
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
@@ -406,11 +434,12 @@ void update_msg_win()
             free(node);
             continue;
         }
-        mvwprintw(show_win, ((int)((y * 70)/100) - 5) - (i++), 1, node->message);
+        mvwprintw(show_win, ((int)((term_y * 70)/100) - 5) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&msg_list_lock);
 
     wrefresh(show_win);
+    pthread_mutex_unlock(&show_win_lock);
 }
 
 void insert_usr_list(char *id)
@@ -457,15 +486,16 @@ void clear_usr_list()
 
 void update_usr_win()
 {
-    int i = 0, cline = 0, line_max = 0, y, x;
+    int i = 0, cline = 0, line_max = 0;
     struct usr_list_node *node, *tnode;
 
-    getmaxyx(stdscr, y, x);
+    pthread_mutex_lock(&ulist_win_lock);
+    werase(ulist_win);
+    wresize(ulist_win, term_y - 4, 15);
+    mvwin(ulist_win, 0, 0);
+    wborder(ulist_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    delwin(ulist_win);
-    ulist_win = create_window(y - 4, 15, 0, 0); 
-
-    line_max = y - 4;
+    line_max = term_y - 4;
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         if(++cline >= line_max) {
@@ -478,6 +508,7 @@ void update_usr_win()
     pthread_mutex_unlock(&usr_list_lock);
 
     wrefresh(ulist_win);
+    pthread_mutex_unlock(&ulist_win_lock);
 }
 
 void current_time()
@@ -557,4 +588,16 @@ void *info_win_thread(void *data)
                 }
         }
     }
+}
+
+void update_chat_win()
+{
+    pthread_mutex_lock(&chat_win_lock);
+    werase(chat_win);
+    wresize(chat_win, 3, term_x - 1);
+    mvwin(chat_win, term_y - 3, 0);
+    wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    wmove(chat_win, 1, 1);
+    wrefresh(chat_win);
+    pthread_mutex_unlock(&chat_win_lock);
 }

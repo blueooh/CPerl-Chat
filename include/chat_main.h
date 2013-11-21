@@ -14,6 +14,8 @@
 #include <fcntl.h> 
 #include <stdio.h> 
 #include <common.h>
+#include <signal.h>
+#include <sys/ioctl.h>
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
@@ -50,6 +52,8 @@ void insert_usr_list(char *id);
 void delete_usr_list(char *id);
 void clear_usr_list();
 void update_usr_win();
+
+void update_chat_win();
 
 WINDOW *create_window(int h, int w, int y, int x);
 void destroy_window(WINDOW *win);
