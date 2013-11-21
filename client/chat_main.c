@@ -36,6 +36,9 @@ void *resize_handler(int sig)
     term_y = w.ws_row;
     term_x = w.ws_col;
 
+    endwin();
+    initscr();
+
     clear();
     refresh();
 
