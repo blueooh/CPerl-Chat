@@ -316,7 +316,7 @@ WINDOW *create_window(int h, int w, int y, int x)
 
     win = newwin(h, w, y, x);
     box(win, 0, 0);
-    wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(win);
 
     return win;
