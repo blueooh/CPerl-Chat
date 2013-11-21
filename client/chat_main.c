@@ -368,7 +368,6 @@ void update_info_win()
     struct info_list_node *node, *tnode;
 
     pthread_mutex_lock(&log_win_lock);
-    log_win = create_window((int)((term_y * 30)/100), term_x - 17, 0, 16);
     werase(log_win);
     wresize(log_win, (int)((term_y * 30)/100), term_x - 17);
     mvwin(log_win, 0, 16);
