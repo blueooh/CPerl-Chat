@@ -173,7 +173,6 @@ int main(int argc, char *argv[])
     pthread_cancel(info_win_pthread);
     close(sock);
     endwin();
-    update_msg_win();
 
     return 0;
 }
