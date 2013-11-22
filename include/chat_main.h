@@ -63,3 +63,4 @@ void print_error(char* err_msg);
 int connect_server();
 void set_env();
 void current_time();
+void *resize_handler(int sig);

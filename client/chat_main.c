@@ -27,27 +27,6 @@ LIST_HEAD(msg_list);
 LIST_HEAD(usr_list);
 LIST_HEAD(info_list);
 
-void *resize_handler(int sig)
-{
-    struct winsize w;
-
-    ioctl(0, TIOCGWINSZ, &w);
-
-    term_y = w.ws_row;
-    term_x = w.ws_col;
-
-    endwin();
-    initscr();
-
-    clear();
-    refresh();
-
-    update_msg_win();
-    update_usr_win();
-    update_info_win();
-    update_chat_win();
-}
-
 int main(int argc, char *argv[])
 {
     int thr_id;
@@ -81,35 +60,35 @@ int main(int argc, char *argv[])
     term_x = COLS;
 
     // 첫 실행 화면 출력
-    mvwprintw(stdscr, LINES/2 - 8, (COLS - strlen(first_scr))/2 - 16, motd_1);
-    mvwprintw(stdscr, LINES/2 - 7, (COLS - strlen(first_scr))/2 - 16, motd_2);
-    mvwprintw(stdscr, LINES/2 - 6, (COLS - strlen(first_scr))/2 - 16, motd_3);
-    mvwprintw(stdscr, LINES/2 - 5, (COLS - strlen(first_scr))/2 - 16, motd_4);
-    mvwprintw(stdscr, LINES/2 - 4, (COLS - strlen(first_scr))/2 - 16, motd_5);
-    mvwprintw(stdscr, LINES/2 - 3, (COLS - strlen(first_scr))/2 - 16, motd_6);
-    mvwprintw(stdscr, LINES/2, (COLS - strlen(first_scr))/2, first_scr); 
-    mvwprintw(stdscr, LINES/2 + 2, (COLS - strlen(srv_name_scr))/2 - 1, srv_name_scr);
-    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 - 1, time_msg_scr);
-    mvwprintw(stdscr, LINES/2 + 4, (COLS - strlen(srv_name_scr))/2 + 12, current_time_scr);
+    mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(first_scr))/2 - 16, motd_1);
+    mvwprintw(stdscr, term_y/2 - 7, (term_x - strlen(first_scr))/2 - 16, motd_2);
+    mvwprintw(stdscr, term_y/2 - 6, (term_x - strlen(first_scr))/2 - 16, motd_3);
+    mvwprintw(stdscr, term_y/2 - 5, (term_x - strlen(first_scr))/2 - 16, motd_4);
+    mvwprintw(stdscr, term_y/2 - 4, (term_x - strlen(first_scr))/2 - 16, motd_5);
+    mvwprintw(stdscr, term_y/2 - 3, (term_x - strlen(first_scr))/2 - 16, motd_6);
+    mvwprintw(stdscr, term_y/2, (term_x - strlen(first_scr))/2, first_scr); 
+    mvwprintw(stdscr, term_y/2 + 2, (term_x - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 - 1, time_msg_scr);
+    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
     //커서를 맨앞으로 이동
-    wmove(stdscr, LINES/2, ((COLS - strlen(first_scr))/2) + strlen(first_scr) + 1);
+    wmove(stdscr, term_y/2, ((term_x - strlen(first_scr))/2) + strlen(first_scr) + 1);
     // 아이디 값을 받아서 저장
     getstr(id);
     memcpy(ms.id, id, strlen(id));
     ms.id[strlen(id)] = '\0';
     //커서를 맨앞으로 이동
-    wmove(stdscr, LINES/2 + 2, ((COLS - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
+    wmove(stdscr, term_y/2 + 2, ((term_x - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
     getstr(srvname);
 
     // 로그&Top10 출력창 생성
-    log_win = create_window((int)((LINES * 30)/100), COLS - 17, 0, 16);
+    log_win = create_window((int)((term_y * 30)/100), term_x - 17, 0, 16);
     // 메시지 출력창 생성
-    show_win = create_window((int)((LINES * 70)/100) - 3, COLS - 17, (int)((LINES * 30)/100), 16); 
+    show_win = create_window((int)((term_y * 70)/100) - 3, term_x - 17, (int)((term_y * 30)/100), 16); 
     // 사용자 목록창 생성 
-    ulist_win = create_window(LINES - 4, 15, 0, 0); 
+    ulist_win = create_window(term_y - 4, 15, 0, 0); 
     // 사용자 입력창 생성
-    chat_win = create_window(3, COLS - 1, LINES - 3, 0);
+    chat_win = create_window(3, term_x - 1, term_y - 3, 0);
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -602,4 +581,25 @@ void update_chat_win()
     wmove(chat_win, 1, 1);
     wrefresh(chat_win);
     pthread_mutex_unlock(&chat_win_lock);
+}
+
+void *resize_handler(int sig)
+{
+    struct winsize w;
+
+    ioctl(0, TIOCGWINSZ, &w);
+
+    term_y = w.ws_row;
+    term_x = w.ws_col;
+
+    endwin();
+    initscr();
+
+    clear();
+    refresh();
+
+    update_msg_win();
+    update_usr_win();
+    update_info_win();
+    update_chat_win();
 }
