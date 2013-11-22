@@ -63,7 +63,7 @@ void print_error(char* err_msg);
 int connect_server();
 void set_env();
 void current_time();
-void *resize_handler(int sig);
+void resize_handler(int sig);
 
 int show_win_lines();
 int show_win_cols();

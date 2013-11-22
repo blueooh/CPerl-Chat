@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
     pthread_cancel(info_win_pthread);
     close(sock);
     endwin();
+    update_msg_win();
 
     return 0;
 }
@@ -583,7 +584,7 @@ void update_chat_win()
     pthread_mutex_unlock(&chat_win_lock);
 }
 
-void *resize_handler(int sig)
+void resize_handler(int sig)
 {
     struct winsize w;
 
