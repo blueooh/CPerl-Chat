@@ -3,6 +3,7 @@
 
 static int term_y = 0, term_x = 0;
 WINDOW *info_win, *show_win, *ulist_win, *chat_win;
+struct cp_win_ui info_ui, show_ui, ulist_ui, chat_ui;
 int sock;
 pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
@@ -39,25 +40,12 @@ int main(int argc, char *argv[])
     char *argv_parse;
     msgst ms;
 
-    signal(SIGWINCH, resize_handler);
-
-    current_time();
-
-    // 처음 사용자의 상태를 로그아웃 상태로 셋팅
-    usr_state = USER_LOGOUT_STATE;
-
-    // 초기 플러그인 스크립트 이름 정의
-    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "naver_rank");
-
     // Locale 환경 셋팅
     set_env();
-
     // Ncurses 환경 초기화
     initscr();
-    refresh();
-
-    term_y = LINES;
-    term_x = COLS;
+    // cperl-chat init
+    init_cp_chat();
 
     // 첫 실행 화면 출력
     mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(first_scr))/2 - 16, motd_1);
@@ -82,13 +70,13 @@ int main(int argc, char *argv[])
     getstr(srvname);
 
     // 로그&Top10 출력창 생성
-    info_win = create_window(info_win_lines(), info_win_cols(), info_win_start_y(), info_win_start_x());
+    info_win = create_window(info_ui.lines, info_ui.cols, info_ui.start_y, info_ui.start_x);
     // 메시지 출력창 생성
-    show_win = create_window(show_win_lines(), show_win_cols(), show_win_start_y(), show_win_start_x()); 
+    show_win = create_window(show_ui.lines, show_ui.cols, show_ui.start_y, show_ui.start_x);
     // 사용자 목록창 생성 
-    ulist_win = create_window(ulist_win_lines(), ulist_win_cols(), ulist_win_start_y(), ulist_win_start_x()); 
+    ulist_win = create_window(ulist_ui.lines, ulist_ui.cols, ulist_ui.start_y, ulist_ui.start_x);
     // 사용자 입력창 생성
-    chat_win = create_window(chat_win_lines(), chat_win_cols(), chat_win_start_y(), chat_win_start_x());
+    chat_win = create_window(chat_ui.lines, chat_ui.cols, chat_ui.start_y, chat_ui.start_x);
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -348,11 +336,11 @@ void update_info_win()
 
     pthread_mutex_lock(&info_win_lock);
     werase(info_win);
-    wresize(info_win, info_win_lines(), info_win_cols());
-    mvwin(info_win, info_win_start_y(), info_win_start_x());
+    wresize(info_win, info_ui.lines, info_ui.cols);
+    mvwin(info_win, info_ui.start_y, info_ui.start_x);
     wborder(info_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = info_win_lines() - 1;
+    line_max = info_ui.lines - 1;
 
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
@@ -361,7 +349,7 @@ void update_info_win()
             free(node);
             continue;
         }
-        mvwprintw(info_win, (info_win_lines() - 2) - (i++), 1, node->message);
+        mvwprintw(info_win, (info_ui.lines - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&info_list_lock);
 
@@ -402,11 +390,11 @@ void update_msg_win()
 
     pthread_mutex_lock(&show_win_lock);
     werase(show_win);
-    wresize(show_win, show_win_lines(), show_win_cols());
-    mvwin(show_win, show_win_start_y(), show_win_start_x());
+    wresize(show_win, show_ui.lines, show_ui.cols);
+    mvwin(show_win, show_ui.start_y, show_ui.start_x);
     wborder(show_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = show_win_lines() - 1;
+    line_max = show_ui.lines - 1;
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
@@ -415,7 +403,7 @@ void update_msg_win()
             free(node);
             continue;
         }
-        mvwprintw(show_win, (show_win_lines() - 2) - (i++), 1, node->message);
+        mvwprintw(show_win, (show_ui.lines - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&msg_list_lock);
 
@@ -472,11 +460,11 @@ void update_usr_win()
 
     pthread_mutex_lock(&ulist_win_lock);
     werase(ulist_win);
-    wresize(ulist_win, ulist_win_lines(), ulist_win_cols());
-    mvwin(ulist_win, ulist_win_start_y(), ulist_win_start_x());
+    wresize(ulist_win, ulist_ui.lines, ulist_ui.cols);
+    mvwin(ulist_win, ulist_ui.start_y, ulist_ui.start_x);
     wborder(ulist_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = ulist_win_lines();
+    line_max = ulist_ui.lines;
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         if(++cline >= line_max) {
@@ -575,8 +563,8 @@ void update_chat_win()
 {
     pthread_mutex_lock(&chat_win_lock);
     werase(chat_win);
-    wresize(chat_win, chat_win_lines(), chat_win_cols());
-    mvwin(chat_win, chat_win_start_y(), chat_win_start_x());
+    wresize(chat_win, chat_ui.lines, chat_ui.cols);
+    mvwin(chat_win, chat_ui.start_y, chat_ui.start_x);
     wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
     wmove(chat_win, 1, 1);
     wrefresh(chat_win);
@@ -587,16 +575,17 @@ void resize_handler(int sig)
 {
     struct winsize w;
 
+    endwin();
+    initscr();
+    clear();
+    refresh();
+
     ioctl(0, TIOCGWINSZ, &w);
 
     term_y = w.ws_row;
     term_x = w.ws_col;
 
-    endwin();
-    initscr();
-
-    clear();
-    refresh();
+    update_win_ui();
 
     update_msg_win();
     update_usr_win();
@@ -604,77 +593,43 @@ void resize_handler(int sig)
     update_chat_win();
 }
 
-int show_win_lines()
+void update_win_ui()
 {
-    return (int)((term_y * 70)/100) - 3;
+    show_ui.lines = (int)((term_y * 70)/100) - 3;
+    show_ui.cols = (term_x - 17);
+    show_ui.start_y = (int)((term_y * 30)/100);
+    show_ui.start_x = 16;
+
+    info_ui.lines = (int)((term_y * 30)/100);
+    info_ui.cols = (term_x - 17);
+    info_ui.start_y = 0;
+    info_ui.start_x = 16;
+
+    ulist_ui.lines = (term_y - 4);
+    ulist_ui.cols = 15;
+    ulist_ui.start_y = 0;
+    ulist_ui.start_x = 0;
+
+    chat_ui.lines = 3;
+    chat_ui.cols = (term_x - 1);
+    chat_ui.start_y = (term_y - 3);
+    chat_ui.start_x = 0;
 }
 
-int show_win_cols()
+void init_cp_chat()
 {
-    return (term_x - 17);
-}
+    current_time();
 
-int show_win_start_y()
-{
-    return (int)((term_y * 30)/100);
-}
+    signal(SIGWINCH, resize_handler);
 
-int show_win_start_x()
-{
-    return 16;
-}
+    // 처음 사용자의 상태를 로그아웃 상태로 셋팅
+    usr_state = USER_LOGOUT_STATE;
 
-int info_win_lines()
-{
-    return (int)((term_y * 30)/100);
-}
+    // 초기 플러그인 스크립트 이름 정의
+    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "naver_rank");
 
-int info_win_cols()
-{
-    return (term_x - 17);
-}
+    term_y = LINES;
+    term_x = COLS;
 
-int info_win_start_y()
-{
-    return 0;
-}
-
-int info_win_start_x()
-{
-    return 16;
-}
-
-int ulist_win_lines()
-{
-    return (term_y - 4);
-}
-
-int ulist_win_cols()
-{
-    return 15;
-}
-int ulist_win_start_y()
-{
-    return 0;
-}
-int ulist_win_start_x()
-{
-    return 0;
-}
-
-int chat_win_lines()
-{
-    return 3;
-}
-int chat_win_cols()
-{
-    return (term_x - 1);
-}
-int chat_win_start_y()
-{
-    return (term_y - 3);
-}
-int chat_win_start_x()
-{
-    return 0;
+    update_win_ui();
 }

@@ -26,6 +26,13 @@
 #endif
 #define SERVER_PORT "8888"
 
+struct cp_win_ui {
+    int lines;
+    int cols;
+    int start_x;
+    int start_y;
+};
+
 struct msg_list_node {
     struct list_head list;
     char message[TOTAL_MESSAGE_SIZE];
@@ -64,23 +71,5 @@ int connect_server();
 void set_env();
 void current_time();
 void resize_handler(int sig);
-
-int show_win_lines();
-int show_win_cols();
-int show_win_start_y();
-int show_win_start_x();
-
-int log_win_lines();
-int log_win_cols();
-int log_win_start_y();
-int log_win_start_x();
-
-int ulist_win_lines();
-int ulist_win_cols();
-int ulist_win_start_y();
-int ulist_win_start_x();
-
-int chat_win_lines();
-int chat_win_cols();
-int chat_win_start_y();
-int chat_win_start_x();
+void update_win_ui();
+void init_cp_chat();
