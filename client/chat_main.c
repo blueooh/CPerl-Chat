@@ -349,7 +349,7 @@ void update_info_win()
     pthread_mutex_lock(&info_win_lock);
     werase(info_win);
     wresize(info_win, info_win_lines(), info_win_cols());
-    mvwin(info_win, 0, 16);
+    mvwin(info_win, info_win_start_y(), info_win_start_y());
     wborder(info_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
     line_max = info_win_lines() - 1;
