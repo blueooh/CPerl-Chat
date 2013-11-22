@@ -2,7 +2,7 @@
 #include <motd.h>
 
 static int term_y = 0, term_x = 0;
-WINDOW *log_win, *show_win, *ulist_win, *chat_win;
+WINDOW *info_win, *show_win, *ulist_win, *chat_win;
 int sock;
 pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
@@ -15,7 +15,7 @@ pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t chat_win_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t log_win_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t info_win_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t show_win_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t ulist_win_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -82,13 +82,13 @@ int main(int argc, char *argv[])
     getstr(srvname);
 
     // 로그&Top10 출력창 생성
-    log_win = create_window((int)((term_y * 30)/100), term_x - 17, 0, 16);
+    info_win = create_window(info_win_lines(), info_win_cols(), info_win_start_y(), info_win_start_x());
     // 메시지 출력창 생성
-    show_win = create_window((int)((term_y * 70)/100) - 3, term_x - 17, (int)((term_y * 30)/100), 16); 
+    show_win = create_window(show_win_lines(), show_win_cols(), show_win_start_y(), show_win_start_x()); 
     // 사용자 목록창 생성 
-    ulist_win = create_window(term_y - 4, 15, 0, 0); 
+    ulist_win = create_window(ulist_win_lines(), ulist_win_cols(), ulist_win_start_y(), ulist_win_start_x()); 
     // 사용자 입력창 생성
-    chat_win = create_window(3, term_x - 1, term_y - 3, 0);
+    chat_win = create_window(chat_win_lines(), chat_win_cols(), chat_win_start_y(), chat_win_start_x());
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -346,13 +346,13 @@ void update_info_win()
     int i = 0, cline = 0, line_max = 0;
     struct info_list_node *node, *tnode;
 
-    pthread_mutex_lock(&log_win_lock);
-    werase(log_win);
-    wresize(log_win, (int)((term_y * 30)/100), term_x - 17);
-    mvwin(log_win, 0, 16);
-    wborder(log_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    pthread_mutex_lock(&info_win_lock);
+    werase(info_win);
+    wresize(info_win, info_win_lines(), info_win_cols());
+    mvwin(info_win, 0, 16);
+    wborder(info_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = (int)((term_y * 30)/100) - 1;
+    line_max = info_win_lines() - 1;
 
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
@@ -361,12 +361,12 @@ void update_info_win()
             free(node);
             continue;
         }
-        mvwprintw(log_win, ((int)((term_y * 30)/100) - 2) - (i++), 1, node->message);
+        mvwprintw(info_win, (info_win_lines() - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&info_list_lock);
 
-    wrefresh(log_win);
-    pthread_mutex_unlock(&log_win_lock);
+    wrefresh(info_win);
+    pthread_mutex_unlock(&info_win_lock);
 }
 
 void insert_msg_list(char *msg)
@@ -402,11 +402,11 @@ void update_msg_win()
 
     pthread_mutex_lock(&show_win_lock);
     werase(show_win);
-    wresize(show_win, (int)((term_y * 70)/100) - 3, term_x - 17);
-    mvwin(show_win, (int)((term_y * 30)/100), 16);
+    wresize(show_win, show_win_lines(), show_win_cols());
+    mvwin(show_win, show_win_start_y(), show_win_start_x());
     wborder(show_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = (int)((term_y * 70)/100) - 4;
+    line_max = show_win_lines() - 1;
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
@@ -415,7 +415,7 @@ void update_msg_win()
             free(node);
             continue;
         }
-        mvwprintw(show_win, ((int)((term_y * 70)/100) - 5) - (i++), 1, node->message);
+        mvwprintw(show_win, (show_win_lines() - 2) - (i++), 1, node->message);
     }
     pthread_mutex_unlock(&msg_list_lock);
 
@@ -472,11 +472,11 @@ void update_usr_win()
 
     pthread_mutex_lock(&ulist_win_lock);
     werase(ulist_win);
-    wresize(ulist_win, term_y - 4, 15);
-    mvwin(ulist_win, 0, 0);
+    wresize(ulist_win, ulist_win_lines(), ulist_win_cols());
+    mvwin(ulist_win, ulist_win_start_y(), ulist_win_start_x());
     wborder(ulist_win, '|', '|', '-', '-', '+', '+', '+', '+');
 
-    line_max = term_y - 4;
+    line_max = ulist_win_lines();
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         if(++cline >= line_max) {
@@ -575,8 +575,8 @@ void update_chat_win()
 {
     pthread_mutex_lock(&chat_win_lock);
     werase(chat_win);
-    wresize(chat_win, 3, term_x - 1);
-    mvwin(chat_win, term_y - 3, 0);
+    wresize(chat_win, chat_win_lines(), chat_win_cols());
+    mvwin(chat_win, chat_win_start_y(), chat_win_start_x());
     wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
     wmove(chat_win, 1, 1);
     wrefresh(chat_win);
@@ -602,4 +602,79 @@ void *resize_handler(int sig)
     update_usr_win();
     update_info_win();
     update_chat_win();
+}
+
+int show_win_lines()
+{
+    return (int)((term_y * 70)/100) - 3;
+}
+
+int show_win_cols()
+{
+    return (term_x - 17);
+}
+
+int show_win_start_y()
+{
+    return (int)((term_y * 30)/100);
+}
+
+int show_win_start_x()
+{
+    return 16;
+}
+
+int info_win_lines()
+{
+    return (int)((term_y * 30)/100);
+}
+
+int info_win_cols()
+{
+    return (term_x - 17);
+}
+
+int info_win_start_y()
+{
+    return 0;
+}
+
+int info_win_start_x()
+{
+    return 16;
+}
+
+int ulist_win_lines()
+{
+    return (term_y - 4);
+}
+
+int ulist_win_cols()
+{
+    return 15;
+}
+int ulist_win_start_y()
+{
+    return 0;
+}
+int ulist_win_start_x()
+{
+    return 0;
+}
+
+int chat_win_lines()
+{
+    return 3;
+}
+int chat_win_cols()
+{
+    return (term_x - 1);
+}
+int chat_win_start_y()
+{
+    return (term_y - 3);
+}
+int chat_win_start_x()
+{
+    return 0;
 }
