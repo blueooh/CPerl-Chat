@@ -70,13 +70,13 @@ int main(int argc, char *argv[])
     getstr(srvname);
 
     // 로그&Top10 출력창 생성
-    info_win = create_window(info_ui.lines, info_ui.cols, info_ui.start_y, info_ui.start_x);
+    info_win = create_window(info_ui);
     // 메시지 출력창 생성
-    show_win = create_window(show_ui.lines, show_ui.cols, show_ui.start_y, show_ui.start_x);
+    show_win = create_window(show_ui);
     // 사용자 목록창 생성 
-    ulist_win = create_window(ulist_ui.lines, ulist_ui.cols, ulist_ui.start_y, ulist_ui.start_x);
+    ulist_win = create_window(ulist_ui);
     // 사용자 입력창 생성
-    chat_win = create_window(chat_ui.lines, chat_ui.cols, chat_ui.start_y, chat_ui.start_x);
+    chat_win = create_window(chat_ui);
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list("already connected!");
-                    update_msg_win();
+                    update_show_win();
                     continue;
                 }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                 clear_usr_list();
                 update_usr_win();
                 insert_msg_list("disconnected!");
-                update_msg_win();
+                update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
             } else if(!strncmp("/script", str, 7)) {
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
             } else if(!strcmp("/clear", str)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
-                update_msg_win();
+                update_show_win();
 
             } else if(!strcmp("/exit", str)) {
                 break;
@@ -171,7 +171,7 @@ void print_error(char* err_msg)
 
     sprintf(buf, "%s%s", "ERROR: ", err_msg);
     insert_msg_list(buf);
-    update_msg_win();
+    update_show_win();
 }
 
 int connect_server()
@@ -269,7 +269,7 @@ void *rcv_thread(void *data) {
 
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
             insert_msg_list(message_buf);
-            update_msg_win();
+            update_show_win();
             pthread_mutex_lock(&chat_win_lock);
             wrefresh(chat_win);
             pthread_mutex_unlock(&chat_win_lock);
@@ -277,13 +277,14 @@ void *rcv_thread(void *data) {
     }
 }
 
-WINDOW *create_window(int h, int w, int y, int x)
+WINDOW *create_window(struct cp_win_ui ui)
 {
     WINDOW *win;
 
-    win = newwin(h, w, y, x);
+    win = newwin(ui.lines, ui.cols, ui.start_y, ui.start_x);
     box(win, 0, 0);
-    wborder(win, '|', '|', '-', '-', '+', '+', '+', '+');
+    wborder(win, ui.left, ui.right, ui.top, ui.bottom, 
+                    ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
     wrefresh(win);
 
     return win;
@@ -335,11 +336,7 @@ void update_info_win()
     struct info_list_node *node, *tnode;
 
     pthread_mutex_lock(&info_win_lock);
-    werase(info_win);
-    wresize(info_win, info_ui.lines, info_ui.cols);
-    mvwin(info_win, info_ui.start_y, info_ui.start_x);
-    wborder(info_win, '|', '|', '-', '-', '+', '+', '+', '+');
-
+    redraw_win_ui(info_win, info_ui);
     line_max = info_ui.lines - 1;
 
     pthread_mutex_lock(&info_list_lock);
@@ -383,17 +380,13 @@ void clear_msg_list()
     }
 }
 
-void update_msg_win()
+void update_show_win()
 {
     int i = 0, cline = 0, line_max = 0;
     struct msg_list_node *node, *tnode;
 
     pthread_mutex_lock(&show_win_lock);
-    werase(show_win);
-    wresize(show_win, show_ui.lines, show_ui.cols);
-    mvwin(show_win, show_ui.start_y, show_ui.start_x);
-    wborder(show_win, '|', '|', '-', '-', '+', '+', '+', '+');
-
+    redraw_win_ui(show_win, show_ui);
     line_max = show_ui.lines - 1;
 
     pthread_mutex_lock(&msg_list_lock);
@@ -459,12 +452,9 @@ void update_usr_win()
     struct usr_list_node *node, *tnode;
 
     pthread_mutex_lock(&ulist_win_lock);
-    werase(ulist_win);
-    wresize(ulist_win, ulist_ui.lines, ulist_ui.cols);
-    mvwin(ulist_win, ulist_ui.start_y, ulist_ui.start_x);
-    wborder(ulist_win, '|', '|', '-', '-', '+', '+', '+', '+');
-
+    redraw_win_ui(ulist_win, ulist_ui);
     line_max = ulist_ui.lines;
+
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         if(++cline >= line_max) {
@@ -562,10 +552,7 @@ void *info_win_thread(void *data)
 void update_chat_win()
 {
     pthread_mutex_lock(&chat_win_lock);
-    werase(chat_win);
-    wresize(chat_win, chat_ui.lines, chat_ui.cols);
-    mvwin(chat_win, chat_ui.start_y, chat_ui.start_x);
-    wborder(chat_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    redraw_win_ui(chat_win, chat_ui);
     wmove(chat_win, 1, 1);
     wrefresh(chat_win);
     pthread_mutex_unlock(&chat_win_lock);
@@ -587,7 +574,7 @@ void resize_handler(int sig)
 
     update_win_ui();
 
-    update_msg_win();
+    update_show_win();
     update_usr_win();
     update_info_win();
     update_chat_win();
@@ -599,21 +586,53 @@ void update_win_ui()
     show_ui.cols = (term_x - 17);
     show_ui.start_y = (int)((term_y * 30)/100);
     show_ui.start_x = 16;
+    show_ui.left = '|';
+    show_ui.right= '|';
+    show_ui.top = '-';
+    show_ui.bottom = '-';
+    show_ui.ltop = '+';
+    show_ui.rtop = '+';
+    show_ui.lbottom = '+';
+    show_ui.rbottom = '+';
 
     info_ui.lines = (int)((term_y * 30)/100);
     info_ui.cols = (term_x - 17);
     info_ui.start_y = 0;
     info_ui.start_x = 16;
+    info_ui.left = '|';
+    info_ui.right= '|';
+    info_ui.top = '-';
+    info_ui.bottom = '-';
+    info_ui.ltop = '+';
+    info_ui.rtop = '+';
+    info_ui.lbottom = '+';
+    info_ui.rbottom = '+';
 
     ulist_ui.lines = (term_y - 4);
     ulist_ui.cols = 15;
     ulist_ui.start_y = 0;
     ulist_ui.start_x = 0;
+    ulist_ui.left = '|';
+    ulist_ui.right= '|';
+    ulist_ui.top = '-';
+    ulist_ui.bottom = '-';
+    ulist_ui.ltop = '+';
+    ulist_ui.rtop = '+';
+    ulist_ui.lbottom = '+';
+    ulist_ui.rbottom = '+';
 
     chat_ui.lines = 3;
     chat_ui.cols = (term_x - 1);
     chat_ui.start_y = (term_y - 3);
     chat_ui.start_x = 0;
+    chat_ui.left = '|';
+    chat_ui.right= '|';
+    chat_ui.top = '-';
+    chat_ui.bottom = '-';
+    chat_ui.ltop = '+';
+    chat_ui.rtop = '+';
+    chat_ui.lbottom = '+';
+    chat_ui.rbottom = '+';
 }
 
 void init_cp_chat()
@@ -632,4 +651,13 @@ void init_cp_chat()
     term_x = COLS;
 
     update_win_ui();
+}
+
+void redraw_win_ui(WINDOW *win, struct cp_win_ui ui)
+{
+    werase(win);
+    wresize(win, ui.lines, ui.cols);
+    mvwin(win, ui.start_y, ui.start_x);
+    wborder(win, ui.right, ui.left, ui.top, ui.bottom, 
+                    ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
 }

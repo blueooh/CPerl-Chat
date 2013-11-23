@@ -19,7 +19,7 @@
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
-#define INFO_SCRIPT_PATH "../script/"
+#define INFO_SCRIPT_PATH "script/"
 #else
 #define SERVER_ADDRESS "172.30.0.104"
 #define INFO_SCRIPT_PATH "/usr/bin/"
@@ -31,6 +31,14 @@ struct cp_win_ui {
     int cols;
     int start_x;
     int start_y;
+    char left;
+    char right;
+    char top;
+    char bottom;
+    char ltop;
+    char rtop;
+    char lbottom;
+    char rbottom;
 };
 
 struct msg_list_node {
@@ -53,7 +61,7 @@ void clear_info_list();
 void update_info_win();
 void insert_msg_list(char *msg);
 void clear_msg_list();
-void update_msg_win();
+void update_show_win();
 
 void insert_usr_list(char *id);
 void delete_usr_list(char *id);
@@ -62,7 +70,9 @@ void update_usr_win();
 
 void update_chat_win();
 
-WINDOW *create_window(int h, int w, int y, int x);
+void redraw_win_ui(WINDOW *win, struct cp_win_ui ui);
+
+WINDOW *create_window(struct cp_win_ui ui);
 void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
 void *info_win_thread(void *data);
