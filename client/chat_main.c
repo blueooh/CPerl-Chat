@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
     // 사용자 입력창 생성
     chat_win = create_window(chat_ui);
 
+    keypad(chat_win, TRUE);
+
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
