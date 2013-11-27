@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
                     strcpy(plugin_file, tfile);
                 } else {
                     sprintf(tbuf, "error: %s cannot be loaded!", tfile);
-                    insert_info_list(tbuf);
+                    insert_info_list(tbuf, COLOR_PAIR(3));
                     update_info_win();
                 }
 
@@ -333,12 +333,13 @@ void set_env()
     }
 }
 
-void insert_info_list(char *info)
+void insert_info_list(char *info, int attrs)
 {
     struct info_list_node *node;
 
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
     strcpy(node->message, info);
+    node->attrs = attrs;
 
     pthread_mutex_lock(&info_list_lock);
     list_add(&node->list, &info_list);
@@ -375,7 +376,9 @@ void update_info_win()
             free(node);
             continue;
         }
+        wattron(info_win, node->attrs);
         mvwprintw(info_win, (info_ui.lines - 2) - (i++), 1, node->message);
+        wattroff(info_win, node->attrs);
     }
     pthread_mutex_unlock(&info_list_lock);
 
@@ -566,14 +569,14 @@ void *info_win_thread(void *data)
                     }
 
                     parse = strtok(buf, DELIM);
-                    insert_info_list(parse);
+                    insert_info_list(parse, COLOR_PAIR(5));
                     update_info_win();
                     pthread_mutex_lock(&chat_win_lock);
                     wrefresh(chat_win);
                     pthread_mutex_unlock(&chat_win_lock);
                     while(parse = strtok(NULL, DELIM)) {
                         sleep(1);
-                        insert_info_list(parse);
+                        insert_info_list(parse, COLOR_PAIR(5));
                         update_info_win();
                         pthread_mutex_lock(&chat_win_lock);
                         wrefresh(chat_win);
@@ -680,6 +683,7 @@ void init_cp_chat()
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
     init_pair(3, COLOR_RED, COLOR_BLACK);
     init_pair(4, COLOR_BLUE, COLOR_BLACK);
+    init_pair(5, COLOR_CYAN, COLOR_BLACK);
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
