@@ -195,7 +195,7 @@ void print_error(char* err_msg)
     char buf[MESSAGE_BUFFER_SIZE];
 
     sprintf(buf, "%s%s", "ERROR: ", err_msg);
-    insert_msg_list(buf, COLOR_PAIR(3));
+    insert_msg_list(buf, COLOR_PAIR(3) | A_BOLD);
     update_show_win();
 }
 
@@ -253,7 +253,7 @@ void *rcv_thread(void *data) {
             switch(ms.state) {
                 case MSG_ALAM_STATE:
                     // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
-                    attrs = COLOR_PAIR(2) | A_BOLD;
+                    attrs = COLOR_PAIR(2) | A_BOLD | A_PROTECT;
                     strcpy(message_buf, ms.message);
                     break;
                 case MSG_DATA_STATE:
