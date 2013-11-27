@@ -72,6 +72,7 @@ struct info_list_node {
 
 struct usr_list_node {
     struct list_head list;
+    int attrs;
     char id[ID_SIZE];
 };
 
@@ -82,7 +83,7 @@ void insert_msg_list(char *msg, int attrs);
 void clear_msg_list();
 void update_show_win();
 
-void insert_usr_list(char *id);
+void insert_usr_list(char *id, int attrs);
 void delete_usr_list(char *id);
 void clear_usr_list();
 void update_usr_win();

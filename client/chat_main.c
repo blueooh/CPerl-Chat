@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    insert_msg_list("already connected!", COLOR_PAIR(1));
+                    insert_msg_list("already connected!", COLOR_PAIR(2));
                     update_show_win();
                     continue;
                 }
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
                 // 사용자 목록 초기화
                 clear_usr_list();
                 update_usr_win();
-                insert_msg_list("disconnected!", COLOR_PAIR(1));
+                insert_msg_list("disconnected!", COLOR_PAIR(3));
                 update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
@@ -264,9 +264,9 @@ void *rcv_thread(void *data) {
                 case MSG_USERLIST_STATE:
                     // 서버로 부터 전체 사용자 목록을 받을 때
                     usr_id = strtok(ms.message, USER_DELIM);
-                    insert_usr_list(usr_id);
+                    insert_usr_list(usr_id, COLOR_PAIR(4));
                     while(usr_id = strtok(NULL, USER_DELIM)) {
-                        insert_usr_list(usr_id);
+                        insert_usr_list(usr_id, COLOR_PAIR(4));
                     }
                     update_usr_win();
                     pthread_mutex_lock(&chat_win_lock);
@@ -278,7 +278,7 @@ void *rcv_thread(void *data) {
                     // 서버로 부터 새로운 사용자에 대한 알림.
                     if(strcmp(id, ms.id)) {
                         attrs = COLOR_PAIR(2);
-                        insert_usr_list(ms.id);
+                        insert_usr_list(ms.id, COLOR_PAIR(4));
                         update_usr_win();
                         current_time();
                         sprintf(message_buf, "%s%s%s", time_buf, ms.id, "님이 입장하셨습니다!");
@@ -436,12 +436,13 @@ void update_show_win()
     pthread_mutex_unlock(&show_win_lock);
 }
 
-void insert_usr_list(char *id)
+void insert_usr_list(char *id, int attrs)
 {
     struct usr_list_node *node;
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
     strcpy(node->id, id);
+    node->attrs = attrs;
 
     pthread_mutex_lock(&usr_list_lock);
     list_add(&node->list, &usr_list);
@@ -494,7 +495,9 @@ void update_usr_win()
             free(node);
             continue;
         }
+        wattron(ulist_win, node->attrs);
         mvwprintw(ulist_win, 1 + (i++), 1, node->id);
+        wattroff(ulist_win, node->attrs);
     }
     pthread_mutex_unlock(&usr_list_lock);
 
@@ -676,6 +679,7 @@ void init_cp_chat()
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
     init_pair(3, COLOR_RED, COLOR_BLACK);
+    init_pair(4, COLOR_BLUE, COLOR_BLACK);
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
