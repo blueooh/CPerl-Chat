@@ -26,6 +26,23 @@
 #endif
 #define SERVER_PORT "8888"
 
+typedef enum cp_option_type {
+    CP_OPT_HELP = 0,
+    CP_OPT_CONNECT,
+    CP_OPT_DISCONNECT,
+    CP_OPT_SCRIPT,
+    CP_OPT_CLEAR,
+    CP_OPT_EXIT,
+    CP_OPT_MAX,
+}CP_ENUM_TYPE;
+
+struct cp_chat_options {
+    CP_ENUM_TYPE op_type;
+    char *op_name;
+    int op_len;
+    char *op_desc;
+};
+
 struct cp_win_ui {
     int lines;
     int cols;

@@ -11,6 +11,15 @@ char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
 char plugin_file[FILE_NAME_MAX];
 
+struct cp_chat_options options[] = {
+    {CP_OPT_HELP, "help", 4, "/help [no argument]: Show CPerl-Chat help messages"},
+    {CP_OPT_CONNECT, "connect", 7, "/connect [no argument]: Try connect to server"},
+    {CP_OPT_DISCONNECT, "disconnect", 10, "/disconnect [no argument]: Try disconnect from server"},
+    {CP_OPT_SCRIPT, "script", 6, "/script [script name]: Excute script you made to plugin"},
+    {CP_OPT_CLEAR, "clear", 5, "/clear [no argument]: Clear messages in show window"},
+    {CP_OPT_EXIT, "exit", 4, "/exit [no argument]: Exit program"},
+};
+
 pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -87,6 +96,7 @@ int main(int argc, char *argv[])
     connect_server();
 
     while(1) {
+        char *cur_opt;
         // 입력이 완료되면 문자열을 화면에서 지우기 위해 사용자 입력창을 재 생성 한다.
         update_chat_win();
         // 사용자의 입력을 받음.
@@ -97,7 +107,17 @@ int main(int argc, char *argv[])
             continue;
 
         if(str[0] == '/') {
-            if(!strcmp("/connect", str)) {
+            cur_opt = str + 1;
+            if(!strncmp(options[CP_OPT_HELP].op_name,
+                        cur_opt, options[CP_OPT_HELP].op_len)) {
+                int i;
+                for(i = 0; i < CP_OPT_MAX; i++) {
+                    insert_msg_list(options[i].op_desc);
+                }
+                update_show_win();
+                continue;
+            } else if(!strncmp(options[CP_OPT_CONNECT].op_name, 
+                        cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list("already connected!");
@@ -114,7 +134,8 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-            } else if(!strcmp("/disconnect", str)) {
+            } else if(!strncmp(options[CP_OPT_DISCONNECT].op_name, 
+                        cur_opt, options[CP_OPT_DISCONNECT].op_len)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
                 pthread_cancel(rcv_pthread);
                 shutdown(sock, SHUT_RDWR);
@@ -125,7 +146,8 @@ int main(int argc, char *argv[])
                 update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
-            } else if(!strncmp("/script", str, 7)) {
+            } else if(!strncmp(options[CP_OPT_SCRIPT].op_name, 
+                        cur_opt, options[CP_OPT_SCRIPT].op_len)) {
                 char tfile[FILE_NAME_MAX], tbuf[MESSAGE_BUFFER_SIZE];
 
                 argv_parse = strtok(str, EXEC_DELIM);
@@ -139,12 +161,14 @@ int main(int argc, char *argv[])
                     update_info_win();
                 }
 
-            } else if(!strcmp("/clear", str)) {
+            } else if(!strncmp(options[CP_OPT_CLEAR].op_name, 
+                        cur_opt, options[CP_OPT_CLEAR].op_len)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
                 update_show_win();
 
-            } else if(!strcmp("/exit", str)) {
+            } else if(!strncmp(options[CP_OPT_EXIT].op_name, 
+                        cur_opt, options[CP_OPT_EXIT].op_len)) {
                 break;
             } 
 
