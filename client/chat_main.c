@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
     set_env();
     // Ncurses 환경 초기화
     initscr();
+    start_color();
     // cperl-chat init
     init_cp_chat();
 
@@ -112,7 +113,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_HELP].op_len)) {
                 int i;
                 for(i = 0; i < CP_OPT_MAX; i++) {
-                    insert_msg_list(options[i].op_desc);
+                    insert_msg_list(options[i].op_desc, COLOR_PAIR(2));
                 }
                 update_show_win();
                 continue;
@@ -120,7 +121,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    insert_msg_list("already connected!");
+                    insert_msg_list("already connected!", COLOR_PAIR(1));
                     update_show_win();
                     continue;
                 }
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
                 // 사용자 목록 초기화
                 clear_usr_list();
                 update_usr_win();
-                insert_msg_list("disconnected!");
+                insert_msg_list("disconnected!", COLOR_PAIR(1));
                 update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
@@ -194,7 +195,7 @@ void print_error(char* err_msg)
     char buf[MESSAGE_BUFFER_SIZE];
 
     sprintf(buf, "%s%s", "ERROR: ", err_msg);
-    insert_msg_list(buf);
+    insert_msg_list(buf, COLOR_PAIR(3));
     update_show_win();
 }
 
@@ -237,12 +238,13 @@ int connect_server()
 }
 
 void *rcv_thread(void *data) {
-    int read_len;
+    int read_len, attrs;
     msgst ms;
     char message_buf[TOTAL_MESSAGE_SIZE];
     char *usr_id;
 
     while(1) {
+        attrs = COLOR_PAIR(1);
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
             pthread_exit(0);
@@ -251,6 +253,7 @@ void *rcv_thread(void *data) {
             switch(ms.state) {
                 case MSG_ALAM_STATE:
                     // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
+                    attrs = COLOR_PAIR(2);
                     strcpy(message_buf, ms.message);
                     break;
                 case MSG_DATA_STATE:
@@ -274,6 +277,7 @@ void *rcv_thread(void *data) {
                 case MSG_NEWUSER_STATE:
                     // 서버로 부터 새로운 사용자에 대한 알림.
                     if(strcmp(id, ms.id)) {
+                        attrs = COLOR_PAIR(2);
                         insert_usr_list(ms.id);
                         update_usr_win();
                         current_time();
@@ -284,6 +288,7 @@ void *rcv_thread(void *data) {
                     }
                 case MSG_DELUSER_STATE:
                     // 서버로 부터 연결 해제된 사용자에 대한 알림.
+                    attrs = COLOR_PAIR(3);
                     delete_usr_list(ms.id);
                     update_usr_win();
                     current_time();
@@ -292,7 +297,7 @@ void *rcv_thread(void *data) {
             }
 
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-            insert_msg_list(message_buf);
+            insert_msg_list(message_buf, attrs);
             update_show_win();
             pthread_mutex_lock(&chat_win_lock);
             wrefresh(chat_win);
@@ -378,12 +383,13 @@ void update_info_win()
     pthread_mutex_unlock(&info_win_lock);
 }
 
-void insert_msg_list(char *msg)
+void insert_msg_list(char *msg, int attrs)
 {
     struct msg_list_node *node, *tnode;
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     strcpy(node->message, msg);
+    node->attrs = attrs;
 
     pthread_mutex_lock(&msg_list_lock);
     list_add(&node->list, &msg_list);
@@ -420,7 +426,9 @@ void update_show_win()
             free(node);
             continue;
         }
+        wattron(show_win, node->attrs);
         mvwprintw(show_win, (show_ui.lines - 2) - (i++), 1, node->message);
+        wattroff(show_win, node->attrs);
     }
     pthread_mutex_unlock(&msg_list_lock);
 
@@ -664,6 +672,10 @@ void init_cp_chat()
     current_time();
 
     signal(SIGWINCH, resize_handler);
+
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
 
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;

@@ -58,8 +58,10 @@ struct cp_win_ui {
     char rbottom;
 };
 
+
 struct msg_list_node {
     struct list_head list;
+    int attrs;
     char message[TOTAL_MESSAGE_SIZE];
 };
 
@@ -76,7 +78,7 @@ struct usr_list_node {
 void insert_info_list(char *info);
 void clear_info_list();
 void update_info_win();
-void insert_msg_list(char *msg);
+void insert_msg_list(char *msg, int attrs);
 void clear_msg_list();
 void update_show_win();
 
