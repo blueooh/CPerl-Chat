@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    insert_msg_list("already connected!", COLOR_PAIR(2));
+                    insert_msg_list("already connected!", COLOR_PAIR(2) | A_BOLD);
                     update_show_win();
                     continue;
                 }
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
                 // 사용자 목록 초기화
                 clear_usr_list();
                 update_usr_win();
-                insert_msg_list("disconnected!", COLOR_PAIR(3));
+                insert_msg_list("disconnected!", COLOR_PAIR(3) | A_BOLD);
                 update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
@@ -253,7 +253,7 @@ void *rcv_thread(void *data) {
             switch(ms.state) {
                 case MSG_ALAM_STATE:
                     // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
-                    attrs = COLOR_PAIR(2);
+                    attrs = COLOR_PAIR(2) | A_BOLD;
                     strcpy(message_buf, ms.message);
                     break;
                 case MSG_DATA_STATE:
@@ -263,10 +263,11 @@ void *rcv_thread(void *data) {
                     break;
                 case MSG_USERLIST_STATE:
                     // 서버로 부터 전체 사용자 목록을 받을 때
+                    attrs = COLOR_PAIR(4);
                     usr_id = strtok(ms.message, USER_DELIM);
-                    insert_usr_list(usr_id, COLOR_PAIR(4));
+                    insert_usr_list(usr_id, attrs);
                     while(usr_id = strtok(NULL, USER_DELIM)) {
-                        insert_usr_list(usr_id, COLOR_PAIR(4));
+                        insert_usr_list(usr_id, attrs);
                     }
                     update_usr_win();
                     pthread_mutex_lock(&chat_win_lock);
@@ -277,7 +278,7 @@ void *rcv_thread(void *data) {
                 case MSG_NEWUSER_STATE:
                     // 서버로 부터 새로운 사용자에 대한 알림.
                     if(strcmp(id, ms.id)) {
-                        attrs = COLOR_PAIR(2);
+                        attrs = COLOR_PAIR(2) | A_BOLD;
                         insert_usr_list(ms.id, COLOR_PAIR(4));
                         update_usr_win();
                         current_time();
@@ -288,7 +289,7 @@ void *rcv_thread(void *data) {
                     }
                 case MSG_DELUSER_STATE:
                     // 서버로 부터 연결 해제된 사용자에 대한 알림.
-                    attrs = COLOR_PAIR(3);
+                    attrs = COLOR_PAIR(3) | A_BOLD;
                     delete_usr_list(ms.id);
                     update_usr_win();
                     current_time();
