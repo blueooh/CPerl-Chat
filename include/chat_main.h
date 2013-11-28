@@ -34,10 +34,10 @@ typedef enum cp_option_type {
     CP_OPT_CLEAR,
     CP_OPT_EXIT,
     CP_OPT_MAX,
-}CP_ENUM_TYPE;
+}option_type;
 
 struct cp_chat_options {
-    CP_ENUM_TYPE op_type;
+    option_type op_type;
     char *op_name;
     int op_len;
     char *op_desc;
@@ -61,8 +61,10 @@ struct cp_win_ui {
 
 struct msg_list_node {
     struct list_head list;
-    int attrs;
-    char message[TOTAL_MESSAGE_SIZE];
+    int type;
+    char time[TIME_BUFFER_SIZE];
+    char id[ID_SIZE];
+    char message[MESSAGE_BUFFER_SIZE];
 };
 
 struct info_list_node {
@@ -80,7 +82,8 @@ struct usr_list_node {
 void insert_info_list(char *info, int attrs);
 void clear_info_list();
 void update_info_win();
-void insert_msg_list(char *msg, int attrs);
+
+void insert_msg_list(int msg_type, char *usr_id, char *msg);
 void clear_msg_list();
 void update_show_win();
 

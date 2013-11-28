@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_HELP].op_len)) {
                 int i;
                 for(i = 0; i < CP_OPT_MAX; i++) {
-                    insert_msg_list(options[i].op_desc, COLOR_PAIR(2));
+                    insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
                 }
                 update_show_win();
                 continue;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
                         cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    insert_msg_list("already connected!", COLOR_PAIR(2) | A_BOLD);
+                    insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
                     update_show_win();
                     continue;
                 }
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
                 // 사용자 목록 초기화
                 clear_usr_list();
                 update_usr_win();
-                insert_msg_list("disconnected!", COLOR_PAIR(3) | A_BOLD);
+                insert_msg_list(MSG_ERROR_STATE, "", "disconnected!");
                 update_show_win();
                 usr_state = USER_LOGOUT_STATE;
 
@@ -195,7 +195,7 @@ void print_error(char* err_msg)
     char buf[MESSAGE_BUFFER_SIZE];
 
     sprintf(buf, "%s%s", "ERROR: ", err_msg);
-    insert_msg_list(buf, COLOR_PAIR(3) | A_BOLD);
+    insert_msg_list(MSG_ERROR_STATE, "", buf);
     update_show_win();
 }
 
@@ -238,36 +238,30 @@ int connect_server()
 }
 
 void *rcv_thread(void *data) {
-    int read_len, attrs;
+    int read_len;
     msgst ms;
-    char message_buf[TOTAL_MESSAGE_SIZE];
+    char message_buf[MESSAGE_BUFFER_SIZE];
     char *usr_id;
 
     while(1) {
-        attrs = COLOR_PAIR(1);
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
             pthread_exit(0);
         } else {
             // 서버로 부터 온 메시지의 종류를 구별한다.
             switch(ms.state) {
-                case MSG_ALAM_STATE:
                     // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
-                    attrs = COLOR_PAIR(2) | A_BOLD | A_PROTECT;
+                case MSG_ALAM_STATE:
+                    // 서버로 부터 사용자들의 메시지를 전달 받을 때
+                case MSG_DATA_STATE:
                     strcpy(message_buf, ms.message);
                     break;
-                case MSG_DATA_STATE:
-                    // 서버로 부터 사용자들의 메시지를 전달 받을 때
-                    current_time();
-                    sprintf(message_buf, "%s%s%s%s", time_buf, ms.id,MESSAGE_SEPARATOR, ms.message);
-                    break;
-                case MSG_USERLIST_STATE:
                     // 서버로 부터 전체 사용자 목록을 받을 때
-                    attrs = COLOR_PAIR(4);
+                case MSG_USERLIST_STATE:
                     usr_id = strtok(ms.message, USER_DELIM);
-                    insert_usr_list(usr_id, attrs);
+                    insert_usr_list(usr_id, COLOR_PAIR(4));
                     while(usr_id = strtok(NULL, USER_DELIM)) {
-                        insert_usr_list(usr_id, attrs);
+                        insert_usr_list(usr_id, COLOR_PAIR(4));
                     }
                     update_usr_win();
                     pthread_mutex_lock(&chat_win_lock);
@@ -275,30 +269,24 @@ void *rcv_thread(void *data) {
                     pthread_mutex_unlock(&chat_win_lock);
                     usr_state = USER_LOGIN_STATE;
                     continue;
-                case MSG_NEWUSER_STATE:
                     // 서버로 부터 새로운 사용자에 대한 알림.
+                case MSG_NEWUSER_STATE:
                     if(strcmp(id, ms.id)) {
-                        attrs = COLOR_PAIR(2) | A_BOLD;
                         insert_usr_list(ms.id, COLOR_PAIR(4));
                         update_usr_win();
-                        current_time();
-                        sprintf(message_buf, "%s%s%s", time_buf, ms.id, "님이 입장하셨습니다!");
                         break;
                     } else {
                         continue;
                     }
-                case MSG_DELUSER_STATE:
                     // 서버로 부터 연결 해제된 사용자에 대한 알림.
-                    attrs = COLOR_PAIR(3) | A_BOLD;
+                case MSG_DELUSER_STATE:
                     delete_usr_list(ms.id);
                     update_usr_win();
-                    current_time();
-                    sprintf(message_buf, "%s%s%s", time_buf, ms.id, "님이 퇴장하셨습니다!");
                     break;
             }
 
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-            insert_msg_list(message_buf, attrs);
+            insert_msg_list(ms.state, ms.id, message_buf);
             update_show_win();
             pthread_mutex_lock(&chat_win_lock);
             wrefresh(chat_win);
@@ -387,13 +375,17 @@ void update_info_win()
     pthread_mutex_unlock(&info_win_lock);
 }
 
-void insert_msg_list(char *msg, int attrs)
+void insert_msg_list(int msg_type, char *usr_id, char *msg)
 {
     struct msg_list_node *node, *tnode;
 
+
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
+    node->type = msg_type;
+    current_time();
+    strcpy(node->time, time_buf);
+    strcpy(node->id, usr_id);
     strcpy(node->message, msg);
-    node->attrs = attrs;
 
     pthread_mutex_lock(&msg_list_lock);
     list_add(&node->list, &msg_list);
@@ -417,6 +409,7 @@ void clear_msg_list()
 void update_show_win()
 {
     int i = 0, cline = 0, line_max = 0;
+    int print_x;
     struct msg_list_node *node, *tnode;
 
     pthread_mutex_lock(&show_win_lock);
@@ -430,9 +423,57 @@ void update_show_win()
             free(node);
             continue;
         }
-        wattron(show_win, node->attrs);
-        mvwprintw(show_win, (show_ui.lines - 2) - (i++), 1, node->message);
-        wattroff(show_win, node->attrs);
+        print_x = 1;
+        switch(node->type) {
+            case MSG_DATA_STATE:
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                wattron(show_win, COLOR_PAIR(1) | A_BOLD);
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                wattroff(show_win, COLOR_PAIR(1) | A_BOLD);
+                wattron(show_win, COLOR_PAIR(2));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), MESSAGE_SEPARATOR);
+                wattroff(show_win, COLOR_PAIR(2));
+                wattron(show_win, COLOR_PAIR(1));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(MESSAGE_SEPARATOR), node->message);
+                wattroff(show_win, COLOR_PAIR(1));
+                break;
+
+            case MSG_DELUSER_STATE:
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                wattron(show_win, COLOR_PAIR(3) | A_BOLD);
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                wattroff(show_win, COLOR_PAIR(3) | A_BOLD);
+                wattron(show_win, COLOR_PAIR(3));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), "님이 퇴장 하셨습니다!");
+                wattroff(show_win, COLOR_PAIR(3));
+                break;
+
+            case MSG_NEWUSER_STATE:
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                wattron(show_win, COLOR_PAIR(2) | A_BOLD);
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                wattroff(show_win, COLOR_PAIR(2) | A_BOLD);
+                wattron(show_win, COLOR_PAIR(2));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), "님이 입장 하셨습니다!");
+                wattroff(show_win, COLOR_PAIR(2));
+                break;
+
+            case MSG_ERROR_STATE:
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                wattron(show_win, COLOR_PAIR(3));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->message);
+                wattroff(show_win, COLOR_PAIR(3));
+                break;
+
+            case MSG_ALAM_STATE:
+            default:
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                wattron(show_win, COLOR_PAIR(2));
+                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->message);
+                wattroff(show_win, COLOR_PAIR(2));
+                break;
+        }
+        i++;
     }
     pthread_mutex_unlock(&msg_list_lock);
 
@@ -514,6 +555,7 @@ void current_time()
   time_t timer;
   struct tm *t;
   int hh, mm, ss;
+  int len;
 
   timer = time(NULL);
   t = localtime(&timer);
@@ -521,7 +563,8 @@ void current_time()
   mm = t->tm_min;
   ss = t->tm_sec;
 
-  sprintf(time_buf, "[%02d:%02d:%02d]", hh, mm, ss);
+  len = sprintf(time_buf, "[%02d:%02d:%02d]", hh, mm, ss);
+  time_buf[len] = '\0';
 }
 
 //info window에 정보를 출력.

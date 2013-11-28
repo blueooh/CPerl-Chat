@@ -5,7 +5,7 @@
 #define USER_DELIM ":"
 #define EXEC_DELIM " "
 #define SERVER_NAME_SIZE 30
-#define TIME_BUFFER_SIZE 10
+#define TIME_BUFFER_SIZE 11
 #define ID_SIZE 50
 #define MESSAGE_BUFFER_SIZE 512
 #define FILE_NAME_MAX 255
@@ -20,6 +20,7 @@ enum {
     MSG_NEWUSER_STATE,
     MSG_USERLIST_STATE,
     MSG_DELUSER_STATE,
+    MSG_ERROR_STATE,
 };
 
 enum {
@@ -32,4 +33,3 @@ typedef struct message_st {
     char id[ID_SIZE];
     char message[MESSAGE_BUFFER_SIZE];
 }msgst;
-
