@@ -58,12 +58,16 @@ int main(int argc, char *argv[])
     init_cp_chat();
 
     // 첫 실행 화면 출력
-    mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(first_scr))/2 - 16, motd_1);
-    mvwprintw(stdscr, term_y/2 - 7, (term_x - strlen(first_scr))/2 - 16, motd_2);
-    mvwprintw(stdscr, term_y/2 - 6, (term_x - strlen(first_scr))/2 - 16, motd_3);
-    mvwprintw(stdscr, term_y/2 - 5, (term_x - strlen(first_scr))/2 - 16, motd_4);
-    mvwprintw(stdscr, term_y/2 - 4, (term_x - strlen(first_scr))/2 - 16, motd_5);
-    mvwprintw(stdscr, term_y/2 - 3, (term_x - strlen(first_scr))/2 - 16, motd_6);
+    wattron(stdscr, COLOR_PAIR(1) | A_BOLD);
+    mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(motd_1))/2, motd_1);
+    mvwprintw(stdscr, term_y/2 - 7, (term_x - strlen(motd_1))/2, motd_2);
+    mvwprintw(stdscr, term_y/2 - 6, (term_x - strlen(motd_1))/2, motd_3);
+    mvwprintw(stdscr, term_y/2 - 5, (term_x - strlen(motd_1))/2, motd_4);
+    wattroff(stdscr, COLOR_PAIR(1) | A_BOLD);
+    wattron(stdscr, COLOR_PAIR(3) | A_BOLD);
+    mvwprintw(stdscr, term_y/2 - 4, (term_x - strlen(motd_1))/2, motd_5);
+    mvwprintw(stdscr, term_y/2 - 3, (term_x - strlen(motd_1))/2, motd_6);
+    wattroff(stdscr, COLOR_PAIR(3)| A_BOLD);
     mvwprintw(stdscr, term_y/2, (term_x - strlen(first_scr))/2, first_scr); 
     mvwprintw(stdscr, term_y/2 + 2, (term_x - strlen(srv_name_scr))/2 - 1, srv_name_scr);
     mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 - 1, time_msg_scr);
