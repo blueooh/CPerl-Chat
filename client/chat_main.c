@@ -521,7 +521,7 @@ void current_time()
   mm = t->tm_min;
   ss = t->tm_sec;
 
-  sprintf(time_buf, "[%d:%d:%d]", hh, mm, ss);
+  sprintf(time_buf, "[%02d:%02d:%02d]", hh, mm, ss);
 }
 
 //info window에 정보를 출력.
