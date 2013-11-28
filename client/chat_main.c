@@ -2,8 +2,8 @@
 #include <motd.h>
 
 static int term_y = 0, term_x = 0;
-WINDOW *info_win, *show_win, *ulist_win, *chat_win;
-struct cp_win_ui info_ui, show_ui, ulist_ui, chat_ui;
+WINDOW *info_win, *show_win, *ulist_win, *chat_win, *local_info_win;
+struct cp_win_ui info_ui, show_ui, ulist_ui, chat_ui, local_info_ui;
 int sock;
 pthread_t rcv_pthread, info_win_pthread;
 int usr_state;
@@ -81,6 +81,8 @@ int main(int argc, char *argv[])
 
     // 로그&Top10 출력창 생성
     info_win = create_window(info_ui);
+    // 로컬 로그 출력창 생성
+    local_info_win = create_window(local_info_ui);
     // 메시지 출력창 생성
     show_win = create_window(show_ui);
     // 사용자 목록창 생성 
@@ -375,6 +377,12 @@ void update_info_win()
     pthread_mutex_unlock(&info_win_lock);
 }
 
+void update_local_info_win()
+{
+    redraw_win_ui(local_info_win, local_info_ui);
+    wrefresh(local_info_win);
+}
+
 void insert_msg_list(int msg_type, char *usr_id, char *msg)
 {
     struct msg_list_node *node, *tnode;
@@ -659,6 +667,7 @@ void resize_handler(int sig)
     update_show_win();
     update_usr_win();
     update_info_win();
+    update_local_info_win();
     update_chat_win();
 }
 
@@ -678,7 +687,7 @@ void update_win_ui()
     show_ui.rbottom = '+';
 
     info_ui.lines = (int)((term_y * 30)/100);
-    info_ui.cols = (term_x - 17);
+    info_ui.cols = (term_x - 17)/2;
     info_ui.start_y = 0;
     info_ui.start_x = 16;
     info_ui.left = '|';
@@ -689,6 +698,19 @@ void update_win_ui()
     info_ui.rtop = '+';
     info_ui.lbottom = '+';
     info_ui.rbottom = '+';
+
+    local_info_ui.lines = (int)((term_y * 30)/100);
+    local_info_ui.cols = (term_x - 17)/2;
+    local_info_ui.start_y = 0;
+    local_info_ui.start_x = 16 + ((term_x - 17)/2);
+    local_info_ui.left = '|';
+    local_info_ui.right= '|';
+    local_info_ui.top = '-';
+    local_info_ui.bottom = '-';
+    local_info_ui.ltop = '+';
+    local_info_ui.rtop = '+';
+    local_info_ui.lbottom = '+';
+    local_info_ui.rbottom = '+';
 
     ulist_ui.lines = (term_y - 4);
     ulist_ui.cols = 15;

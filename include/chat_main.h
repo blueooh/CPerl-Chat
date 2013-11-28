@@ -83,6 +83,8 @@ void insert_info_list(char *info, int attrs);
 void clear_info_list();
 void update_info_win();
 
+void update_local_info_win();
+
 void insert_msg_list(int msg_type, char *usr_id, char *msg);
 void clear_msg_list();
 void update_show_win();
