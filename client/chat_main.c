@@ -5,7 +5,7 @@ static int term_y = 0, term_x = 0;
 WINDOW *info_win, *show_win, *ulist_win, *chat_win, *local_info_win;
 struct cp_win_ui info_ui, show_ui, ulist_ui, chat_ui, local_info_ui;
 int sock;
-pthread_t rcv_pthread, info_win_pthread;
+pthread_t rcv_pthread, info_win_pthread, local_info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
@@ -23,11 +23,6 @@ struct cp_chat_options options[] = {
 pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_mutex_t chat_win_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t info_win_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t show_win_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t ulist_win_lock = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned int msg_count;
 unsigned int usr_count;
@@ -95,6 +90,11 @@ int main(int argc, char *argv[])
     chat_win = create_window(chat_ui);
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
+    if(thr_id < 0) {
+        print_error("pthread_create error");
+        return -1;
+    }
+    thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
         return -1;
@@ -189,7 +189,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    pthread_cancel(rcv_pthread);
     pthread_cancel(info_win_pthread);
+    pthread_cancel(local_info_win_pthread);
     close(sock);
     endwin();
 
@@ -270,9 +272,7 @@ void *rcv_thread(void *data) {
                         insert_usr_list(usr_id, COLOR_PAIR(4));
                     }
                     update_usr_win();
-                    pthread_mutex_lock(&chat_win_lock);
                     wrefresh(chat_win);
-                    pthread_mutex_unlock(&chat_win_lock);
                     usr_state = USER_LOGIN_STATE;
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
@@ -294,9 +294,7 @@ void *rcv_thread(void *data) {
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
             insert_msg_list(ms.state, ms.id, message_buf);
             update_show_win();
-            pthread_mutex_lock(&chat_win_lock);
             wrefresh(chat_win);
-            pthread_mutex_unlock(&chat_win_lock);
         }
     }
 }
@@ -360,7 +358,6 @@ void update_info_win()
     int i = 0, cline = 0, line_max = 0;
     struct info_list_node *node, *tnode;
 
-    pthread_mutex_lock(&info_win_lock);
     redraw_win_ui(info_win, info_ui);
     line_max = info_ui.lines - 1;
 
@@ -378,12 +375,12 @@ void update_info_win()
     pthread_mutex_unlock(&info_list_lock);
 
     wrefresh(info_win);
-    pthread_mutex_unlock(&info_win_lock);
 }
 
 void update_local_info_win()
 {
     redraw_win_ui(local_info_win, local_info_ui);
+    mvwprintw(local_info_win, 1, 1, "cpu    usage: %d%%", 30);
     wrefresh(local_info_win);
 }
 
@@ -424,7 +421,6 @@ void update_show_win()
     int print_x;
     struct msg_list_node *node, *tnode;
 
-    pthread_mutex_lock(&show_win_lock);
     redraw_win_ui(show_win, show_ui);
     line_max = show_ui.lines - 1;
 
@@ -490,7 +486,6 @@ void update_show_win()
     pthread_mutex_unlock(&msg_list_lock);
 
     wrefresh(show_win);
-    pthread_mutex_unlock(&show_win_lock);
 }
 
 void insert_usr_list(char *id, int attrs)
@@ -541,7 +536,6 @@ void update_usr_win()
     int i = 0, cline = 0, line_max = 0;
     struct usr_list_node *node, *tnode;
 
-    pthread_mutex_lock(&ulist_win_lock);
     redraw_win_ui(ulist_win, ulist_ui);
     line_max = ulist_ui.lines;
 
@@ -559,7 +553,6 @@ void update_usr_win()
     pthread_mutex_unlock(&usr_list_lock);
 
     wrefresh(ulist_win);
-    pthread_mutex_unlock(&ulist_win_lock);
 }
 
 void current_time()
@@ -627,29 +620,32 @@ void *info_win_thread(void *data)
                     parse = strtok(buf, DELIM);
                     insert_info_list(parse, COLOR_PAIR(5));
                     update_info_win();
-                    pthread_mutex_lock(&chat_win_lock);
                     wrefresh(chat_win);
-                    pthread_mutex_unlock(&chat_win_lock);
                     while(parse = strtok(NULL, DELIM)) {
                         sleep(1);
                         insert_info_list(parse, COLOR_PAIR(5));
                         update_info_win();
-                        pthread_mutex_lock(&chat_win_lock);
                         wrefresh(chat_win);
-                        pthread_mutex_unlock(&chat_win_lock);
                     }
                 }
         }
     }
 }
 
+void *local_info_win_thread(void *data)
+{
+    while(1) {
+        update_local_info_win();
+        wrefresh(chat_win);
+        sleep(1);
+    }
+}
+
 void update_chat_win()
 {
-    pthread_mutex_lock(&chat_win_lock);
     redraw_win_ui(chat_win, chat_ui);
     wmove(chat_win, 1, 1);
     wrefresh(chat_win);
-    pthread_mutex_unlock(&chat_win_lock);
 }
 
 void resize_handler(int sig)
