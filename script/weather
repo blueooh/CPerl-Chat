@@ -4,7 +4,6 @@ use utf8;
 use strict;
 use warnings;
 use LWP::UserAgent;
-use Data::Printer;
 use Encode;
 use JSON;
 
@@ -13,7 +12,7 @@ my $woeid = woeid_process($current_region);
 my @weekly = condition_process($woeid);
 my @weathers;
         
-push @weathers, ("[-Weekly Weather-]");
+push @weathers, ("[-Weekly Weather-【$current_region】]");
 push @weathers, ("[$weekly[0]"." $weekly[1]]  "." $weekly[2]℃ ｜$weekly[3]℃ "."【$weekly[4]】");
 push @weathers, ("[$weekly[5]"." $weekly[6]]  "." $weekly[7]℃ ｜$weekly[8]℃ "."【$weekly[9]】");
 push @weathers, ("[$weekly[10]"." $weekly[11]]  "." $weekly[12]℃ ｜$weekly[13]℃ "."【$weekly[14]】");
@@ -112,10 +111,3 @@ sub parser_region {
         }
     }
 }
-
-=pod
-
-=head1 SYNOPSIS
-    Returns weather information from Yahoo Weather APIs!
-
-=cut
