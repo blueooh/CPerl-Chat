@@ -644,7 +644,6 @@ void *local_info_win_thread(void *data)
 void update_chat_win()
 {
     redraw_win_ui(chat_win, chat_ui);
-    wmove(chat_win, 1, 1);
     wrefresh(chat_win);
 }
 
