@@ -668,6 +668,7 @@ void resize_handler(int sig)
     update_info_win();
     update_local_info_win();
     update_chat_win();
+    wmove(chat_win, 1, 1);
 }
 
 void update_win_ui()
