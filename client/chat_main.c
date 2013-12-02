@@ -115,16 +115,16 @@ int main(int argc, char *argv[])
 
         if(str[0] == '/') {
             cur_opt = str + 1;
-            if(!strncmp(options[CP_OPT_HELP].op_name,
-                        cur_opt, options[CP_OPT_HELP].op_len)) {
+            if((options[CP_OPT_HELP].op_len == strlen(cur_opt)) && 
+                    !strncmp(options[CP_OPT_HELP].op_name, cur_opt, options[CP_OPT_HELP].op_len)) {
                 int i;
                 for(i = 0; i < CP_OPT_MAX; i++) {
                     insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
                 }
                 update_show_win();
                 continue;
-            } else if(!strncmp(options[CP_OPT_CONNECT].op_name, 
-                        cur_opt, options[CP_OPT_CONNECT].op_len)) {
+            } else if((options[CP_OPT_CONNECT].op_len == strlen(cur_opt)) &&
+                    !strncmp(options[CP_OPT_CONNECT].op_name, cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
@@ -141,8 +141,8 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-            } else if(!strncmp(options[CP_OPT_DISCONNECT].op_name, 
-                        cur_opt, options[CP_OPT_DISCONNECT].op_len)) {
+            } else if((options[CP_OPT_DISCONNECT].op_len == strlen(cur_opt)) &&
+                    !strncmp(options[CP_OPT_DISCONNECT].op_name, cur_opt, options[CP_OPT_DISCONNECT].op_len)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
                 pthread_cancel(rcv_pthread);
                 shutdown(sock, SHUT_RDWR);
@@ -168,14 +168,14 @@ int main(int argc, char *argv[])
                     update_info_win();
                 }
 
-            } else if(!strncmp(options[CP_OPT_CLEAR].op_name, 
-                        cur_opt, options[CP_OPT_CLEAR].op_len)) {
+            } else if((options[CP_OPT_CLEAR].op_len == strlen(cur_opt)) &&
+                    !strncmp(options[CP_OPT_CLEAR].op_name, cur_opt, options[CP_OPT_CLEAR].op_len)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
                 update_show_win();
 
-            } else if(!strncmp(options[CP_OPT_EXIT].op_name, 
-                        cur_opt, options[CP_OPT_EXIT].op_len)) {
+            } else if((options[CP_OPT_EXIT].op_len == strlen(cur_opt)) &&
+                    !strncmp(options[CP_OPT_EXIT].op_name, cur_opt, options[CP_OPT_EXIT].op_len)) {
                 break;
             } 
 
