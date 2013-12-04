@@ -98,7 +98,8 @@ void update_usr_win();
 
 void update_chat_win();
 
-void redraw_win_ui(WINDOW *win, struct cp_win_ui ui);
+void resize_win_ui(WINDOW *win, struct cp_win_ui ui);
+void draw_win_ui(WINDOW *win, struct cp_win_ui ui);
 
 WINDOW *create_window(struct cp_win_ui ui);
 void destroy_window(WINDOW *win);

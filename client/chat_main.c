@@ -357,32 +357,46 @@ void clear_info_list()
 void update_info_win()
 {
     int i = 0, cline = 0, line_max = 0;
+    int print_y, print_x;
     struct info_list_node *node, *tnode;
 
-    redraw_win_ui(info_win, info_ui);
     line_max = info_ui.lines - 1;
 
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
+        print_y = (info_ui.lines - 2) - i;
+        print_x = 1;
+
+        wmove(info_win, print_y, print_x);
+        wclrtoeol(info_win);
+
         if(++cline >= line_max) {
             list_del(&node->list);
             free(node);
             continue;
         }
+
         wattron(info_win, node->attrs);
-        mvwprintw(info_win, (info_ui.lines - 2) - (i++), 1, node->message);
+        mvwprintw(info_win, print_y, print_x, node->message);
         wattroff(info_win, node->attrs);
+        i++;
     }
     pthread_mutex_unlock(&info_list_lock);
 
-    wrefresh(info_win);
+    draw_win_ui(info_win, info_ui);
 }
 
 void update_local_info_win()
 {
-    redraw_win_ui(local_info_win, local_info_ui);
-    mvwprintw(local_info_win, 1, 1, "cpu    usage: %d%%", 30);
-    wrefresh(local_info_win);
+    int print_y, print_x;
+
+    print_y = 1;
+    print_x = 1;
+
+    wmove(local_info_win, print_y, print_x);
+    wclrtoeol(local_info_win);
+    mvwprintw(local_info_win, print_y, print_x, "cpu    usage: %d%%", 30);
+    draw_win_ui(local_info_win, local_info_ui);
 }
 
 void insert_msg_list(int msg_type, char *usr_id, char *msg)
@@ -419,66 +433,71 @@ void clear_msg_list()
 void update_show_win()
 {
     int i = 0, cline = 0, line_max = 0;
-    int print_x;
+    int print_y, print_x;
     struct msg_list_node *node, *tnode;
 
-    redraw_win_ui(show_win, show_ui);
     line_max = show_ui.lines - 1;
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
+        print_x = 1;
+        print_y = (show_ui.lines - 2) - i;
+
+        wmove(show_win, print_y, print_x);
+        wclrtoeol(show_win);
+
         if(++cline >= line_max) {
             list_del(&node->list);
             free(node);
             continue;
         }
-        print_x = 1;
+
         switch(node->type) {
             case MSG_DATA_STATE:
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                mvwprintw(show_win, print_y, print_x, node->time);
                 wattron(show_win, COLOR_PAIR(1) | A_BOLD);
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
                 wattroff(show_win, COLOR_PAIR(1) | A_BOLD);
                 wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), MESSAGE_SEPARATOR);
+                mvwprintw(show_win, print_y, print_x += strlen(node->id), MESSAGE_SEPARATOR);
                 wattroff(show_win, COLOR_PAIR(2));
                 wattron(show_win, COLOR_PAIR(1));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(MESSAGE_SEPARATOR), node->message);
+                mvwprintw(show_win, print_y, print_x += strlen(MESSAGE_SEPARATOR), node->message);
                 wattroff(show_win, COLOR_PAIR(1));
                 break;
 
             case MSG_DELUSER_STATE:
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                mvwprintw(show_win, print_y, print_x, node->time);
                 wattron(show_win, COLOR_PAIR(3) | A_BOLD);
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
                 wattroff(show_win, COLOR_PAIR(3) | A_BOLD);
                 wattron(show_win, COLOR_PAIR(3));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), "님이 퇴장 하셨습니다!");
+                mvwprintw(show_win, print_y, print_x += strlen(node->id), "님이 퇴장 하셨습니다!");
                 wattroff(show_win, COLOR_PAIR(3));
                 break;
 
             case MSG_NEWUSER_STATE:
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                mvwprintw(show_win, print_y, print_x, node->time);
                 wattron(show_win, COLOR_PAIR(2) | A_BOLD);
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->id);
+                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
                 wattroff(show_win, COLOR_PAIR(2) | A_BOLD);
                 wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->id), "님이 입장 하셨습니다!");
+                mvwprintw(show_win, print_y, print_x += strlen(node->id), "님이 입장 하셨습니다!");
                 wattroff(show_win, COLOR_PAIR(2));
                 break;
 
             case MSG_ERROR_STATE:
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                mvwprintw(show_win, print_y, print_x, node->time);
                 wattron(show_win, COLOR_PAIR(3));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->message);
+                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->message);
                 wattroff(show_win, COLOR_PAIR(3));
                 break;
 
             case MSG_ALAM_STATE:
             default:
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x, node->time);
+                mvwprintw(show_win, print_y, print_x, node->time);
                 wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, (show_ui.lines - 2) - i, print_x += strlen(node->time), node->message);
+                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->message);
                 wattroff(show_win, COLOR_PAIR(2));
                 break;
         }
@@ -486,7 +505,7 @@ void update_show_win()
     }
     pthread_mutex_unlock(&msg_list_lock);
 
-    wrefresh(show_win);
+    draw_win_ui(show_win, show_ui);
 }
 
 void insert_usr_list(char *id, int attrs)
@@ -535,25 +554,32 @@ void clear_usr_list()
 void update_usr_win()
 {
     int i = 0, cline = 0, line_max = 0;
+    int print_y, print_x;
     struct usr_list_node *node, *tnode;
 
-    redraw_win_ui(ulist_win, ulist_ui);
     line_max = ulist_ui.lines;
 
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
+        print_y = i + 1;
+        print_x = 1;
+
+        wmove(ulist_win, print_y, print_x);
+        wclrtoeol(ulist_win);
+
         if(++cline >= line_max) {
             list_del(&node->list);
             free(node);
             continue;
         }
         wattron(ulist_win, node->attrs);
-        mvwprintw(ulist_win, 1 + (i++), 1, node->id);
+        mvwprintw(ulist_win, print_y, print_x, node->id);
         wattroff(ulist_win, node->attrs);
+        i++;
     }
     pthread_mutex_unlock(&usr_list_lock);
 
-    wrefresh(ulist_win);
+    draw_win_ui(ulist_win, ulist_ui);
 }
 
 void current_time()
@@ -644,8 +670,9 @@ void *local_info_win_thread(void *data)
 
 void update_chat_win()
 {
-    redraw_win_ui(chat_win, chat_ui);
-    wrefresh(chat_win);
+    wmove(chat_win, 1, 1);
+    wclrtoeol(chat_win);
+    draw_win_ui(chat_win, chat_ui);
 }
 
 void resize_handler(int sig)
@@ -664,12 +691,20 @@ void resize_handler(int sig)
 
     update_win_ui();
 
+    resize_win_ui(show_win, show_ui);
     update_show_win();
+
+    resize_win_ui(ulist_win, ulist_ui);
     update_usr_win();
+
+    resize_win_ui(info_win, info_ui);
     update_info_win();
+
+    resize_win_ui(local_info_win, local_info_ui);
     update_local_info_win();
+
+    resize_win_ui(chat_win, chat_ui);
     update_chat_win();
-    wmove(chat_win, 1, 1);
 }
 
 void update_win_ui()
@@ -764,11 +799,17 @@ void init_cp_chat()
     update_win_ui();
 }
 
-void redraw_win_ui(WINDOW *win, struct cp_win_ui ui)
+void resize_win_ui(WINDOW *win, struct cp_win_ui ui)
 {
     werase(win);
     wresize(win, ui.lines, ui.cols);
     mvwin(win, ui.start_y, ui.start_x);
+    wrefresh(win);
+}
+
+void draw_win_ui(WINDOW *win, struct cp_win_ui ui)
+{
     wborder(win, ui.right, ui.left, ui.top, ui.bottom, 
-                    ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
+            ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
+    wrefresh(win);
 }
