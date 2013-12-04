@@ -1,5 +1,4 @@
 //#define TEST
-#define INFO_PIPE_FILE "/tmp/info_pipe"
 #define MESSAGE_SEPARATOR ": "
 #define DELIM "/"
 #define USER_DELIM ":"

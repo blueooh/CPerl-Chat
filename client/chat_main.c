@@ -9,7 +9,7 @@ pthread_t rcv_pthread, info_win_pthread, local_info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
-char plugin_file[FILE_NAME_MAX];
+char plugin_cmd[MESSAGE_BUFFER_SIZE];
 
 struct cp_chat_options options[] = {
     {CP_OPT_HELP, "help", 4, "/help [no argument]: Show CPerl-Chat help messages"},
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
                 argv_parse = strtok(NULL, EXEC_DELIM);
                 sprintf(tfile, "%s%s", INFO_SCRIPT_PATH, argv_parse);
                 if(!access(tfile, R_OK | X_OK)) {
-                    strcpy(plugin_file, tfile);
+                    sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
                 } else {
                     sprintf(tbuf, "error: %s cannot be loaded!", tfile);
                     insert_info_list(tbuf, COLOR_PAIR(3));
@@ -193,6 +193,7 @@ int main(int argc, char *argv[])
     pthread_cancel(info_win_pthread);
     pthread_cancel(local_info_win_pthread);
     close(sock);
+    unlink(INFO_PIPE_FILE);
     endwin();
 
     return 0;
@@ -602,7 +603,7 @@ void *info_win_thread(void *data)
 
     //select fifo 파일변화 추적
     while(1) {
-        system(plugin_file);
+        system(plugin_cmd);
         state = select(fd + 1, &readfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
@@ -754,8 +755,8 @@ void init_cp_chat()
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
 
-    // 초기 플러그인 스크립트 이름 정의
-    sprintf(plugin_file, "%s%s", INFO_SCRIPT_PATH, "naver_rank");
+    // 초기 플러그인 스크립트 명령 라인 생성
+    sprintf(plugin_cmd, "%s%s %s", INFO_SCRIPT_PATH, "naver_rank", INFO_PIPE_FILE);
 
     term_y = LINES;
     term_x = COLS;

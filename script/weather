@@ -7,6 +7,7 @@ use LWP::UserAgent;
 use Encode;
 use JSON;
 
+my $pipe_file = $ARGV[0];
 my $current_region = parser_region();
 my $woeid = woeid_process($current_region);
 my @weekly = condition_process($woeid);
@@ -20,7 +21,7 @@ push @weathers, ("[$weekly[15]"." $weekly[16]]  "." $weekly[17]℃ ｜$weekly[18
 push @weathers, ("[$weekly[20]"." $weekly[21]]  "." $weekly[22]℃ ｜$weekly[23]℃ "."【$weekly[24]】");
 
 my $parse_weather = join('/', @weathers);
-system("echo $parse_weather > /tmp/info_pipe");
+system("echo $parse_weather > $pipe_file");
 
 sub current_process {
     my $msg = shift;
