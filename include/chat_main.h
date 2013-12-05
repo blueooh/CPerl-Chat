@@ -28,6 +28,17 @@
 #endif
 #define SERVER_PORT "8888"
 
+typedef void (*cb_update)(void);
+
+typedef enum cp_window_type {
+    CP_CHAT_WIN = 0,
+    CP_SHOW_WIN,
+    CP_INFO_WIN,
+    CP_LO_INFO_WIN,
+    CP_ULIST_WIN,
+    CP_MAX_WIN,
+}window_type;
+
 typedef enum cp_option_type {
     CP_OPT_HELP = 0,
     CP_OPT_CONNECT,
@@ -45,7 +56,7 @@ struct cp_chat_options {
     char *op_desc;
 };
 
-struct cp_win_ui {
+struct win_ui {
     int lines;
     int cols;
     int start_x;
@@ -60,6 +71,11 @@ struct cp_win_ui {
     char rbottom;
 };
 
+struct cp_win_manage {
+    WINDOW *win;
+    struct win_ui ui;
+    cb_update update_handler;
+};
 
 struct msg_list_node {
     struct list_head list;
@@ -98,10 +114,10 @@ void update_usr_win();
 
 void update_chat_win();
 
-void resize_win_ui(WINDOW *win, struct cp_win_ui ui);
-void draw_win_ui(WINDOW *win, struct cp_win_ui ui);
+void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update);
+void draw_win_ui(WINDOW *win, struct win_ui ui);
 
-WINDOW *create_window(struct cp_win_ui ui);
+WINDOW *create_window(struct win_ui ui);
 void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
 void *info_win_thread(void *data);
@@ -113,3 +129,6 @@ void current_time();
 void resize_handler(int sig);
 void update_win_ui();
 void init_cp_chat();
+void reg_update_win_func();
+void first_scr_ui();
+void create_cp_win();

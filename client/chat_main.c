@@ -1,14 +1,14 @@
 #include <chat_main.h>
 #include <motd.h>
 
+struct cp_win_manage cw_manage[CP_MAX_WIN];
 static int term_y = 0, term_x = 0;
-WINDOW *info_win, *show_win, *ulist_win, *chat_win, *local_info_win;
-struct cp_win_ui info_ui, show_ui, ulist_ui, chat_ui, local_info_ui;
 int sock;
 pthread_t rcv_pthread, info_win_pthread, local_info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
 char id[ID_SIZE];
+char srvname[SERVER_NAME_SIZE];
 char plugin_cmd[MESSAGE_BUFFER_SIZE];
 
 struct cp_chat_options options[] = {
@@ -35,14 +35,6 @@ LIST_HEAD(info_list);
 int main(int argc, char *argv[])
 {
     int thr_id;
-    char str[MESSAGE_BUFFER_SIZE];
-    char srvname[SERVER_NAME_SIZE];
-    char *first_scr = "Enter your id: ";
-    char *srv_name_scr = "Server Name: ";
-    char *time_msg_scr = "Acess Time:";
-    char *current_time_scr = time_buf;
-    char *argv_parse;
-    msgst ms;
 
     // Locale 환경 셋팅
     set_env();
@@ -51,43 +43,10 @@ int main(int argc, char *argv[])
     start_color();
     // cperl-chat init
     init_cp_chat();
-
-    // 첫 실행 화면 출력
-    wattron(stdscr, COLOR_PAIR(1) | A_BOLD);
-    mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(motd_1))/2, motd_1);
-    mvwprintw(stdscr, term_y/2 - 7, (term_x - strlen(motd_1))/2, motd_2);
-    mvwprintw(stdscr, term_y/2 - 6, (term_x - strlen(motd_1))/2, motd_3);
-    mvwprintw(stdscr, term_y/2 - 5, (term_x - strlen(motd_1))/2, motd_4);
-    wattroff(stdscr, COLOR_PAIR(1) | A_BOLD);
-    wattron(stdscr, COLOR_PAIR(3) | A_BOLD);
-    mvwprintw(stdscr, term_y/2 - 4, (term_x - strlen(motd_1))/2, motd_5);
-    mvwprintw(stdscr, term_y/2 - 3, (term_x - strlen(motd_1))/2, motd_6);
-    wattroff(stdscr, COLOR_PAIR(3)| A_BOLD);
-    mvwprintw(stdscr, term_y/2, (term_x - strlen(first_scr))/2, first_scr); 
-    mvwprintw(stdscr, term_y/2 + 2, (term_x - strlen(srv_name_scr))/2 - 1, srv_name_scr);
-    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 - 1, time_msg_scr);
-    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 + 12, current_time_scr);
-
-    //커서를 맨앞으로 이동
-    wmove(stdscr, term_y/2, ((term_x - strlen(first_scr))/2) + strlen(first_scr) + 1);
-    // 아이디 값을 받아서 저장
-    getstr(id);
-    memcpy(ms.id, id, strlen(id));
-    ms.id[strlen(id)] = '\0';
-    //커서를 맨앞으로 이동
-    wmove(stdscr, term_y/2 + 2, ((term_x - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
-    getstr(srvname);
-
-    // 로그&Top10 출력창 생성
-    info_win = create_window(info_ui);
-    // 로컬 로그 출력창 생성
-    local_info_win = create_window(local_info_ui);
-    // 메시지 출력창 생성
-    show_win = create_window(show_ui);
-    // 사용자 목록창 생성 
-    ulist_win = create_window(ulist_ui);
-    // 사용자 입력창 생성
-    chat_win = create_window(chat_ui);
+    // 첫 실행 화면
+    first_scr_ui();
+    // CPerl-Chat 윈도우 생성
+    create_cp_win();
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -103,11 +62,15 @@ int main(int argc, char *argv[])
     connect_server();
 
     while(1) {
+        msgst ms;
+        char *argv_parse;
+        char str[MESSAGE_BUFFER_SIZE];
         char *cur_opt;
+
         // 입력이 완료되면 문자열을 화면에서 지우기 위해 사용자 입력창을 재 생성 한다.
-        update_chat_win();
+        cw_manage[CP_CHAT_WIN].update_handler();
         // 사용자의 입력을 받음.
-        mvwgetstr(chat_win, 1, 1, str);
+        mvwgetstr(cw_manage[CP_CHAT_WIN].win, 1, 1, str);
 
         // 아무값이 없는 입력은 무시
         if(!strlen(str)) 
@@ -121,20 +84,20 @@ int main(int argc, char *argv[])
                 for(i = 0; i < CP_OPT_MAX; i++) {
                     insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
                 }
-                update_show_win();
+                cw_manage[CP_SHOW_WIN].update_handler();
                 continue;
             } else if((options[CP_OPT_CONNECT].op_len == strlen(cur_opt)) &&
                     !strncmp(options[CP_OPT_CONNECT].op_name, cur_opt, options[CP_OPT_CONNECT].op_len)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
-                    update_show_win();
+                    cw_manage[CP_SHOW_WIN].update_handler();
                     continue;
                 }
 
                 // 사용자 목록 창과 리스트에 남아있는 사용자 목록을 초기화 한다.
                 clear_usr_list();
-                update_usr_win();
+                cw_manage[CP_ULIST_WIN].update_handler();
 
                 // 접속 시도
                 if(connect_server() < 0) {
@@ -148,9 +111,9 @@ int main(int argc, char *argv[])
                 shutdown(sock, SHUT_RDWR);
                 // 사용자 목록 초기화
                 clear_usr_list();
-                update_usr_win();
+                cw_manage[CP_ULIST_WIN].update_handler();
                 insert_msg_list(MSG_ERROR_STATE, "", "disconnected!");
-                update_show_win();
+                cw_manage[CP_SHOW_WIN].update_handler();
                 usr_state = USER_LOGOUT_STATE;
 
             } else if(!strncmp(options[CP_OPT_SCRIPT].op_name, 
@@ -165,14 +128,14 @@ int main(int argc, char *argv[])
                 } else {
                     sprintf(tbuf, "error: %s cannot be loaded!", tfile);
                     insert_info_list(tbuf, COLOR_PAIR(3));
-                    update_info_win();
+                    cw_manage[CP_INFO_WIN].update_handler();
                 }
 
             } else if((options[CP_OPT_CLEAR].op_len == strlen(cur_opt)) &&
                     !strncmp(options[CP_OPT_CLEAR].op_name, cur_opt, options[CP_OPT_CLEAR].op_len)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
-                update_show_win();
+                cw_manage[CP_SHOW_WIN].update_handler();
 
             } else if((options[CP_OPT_EXIT].op_len == strlen(cur_opt)) &&
                     !strncmp(options[CP_OPT_EXIT].op_name, cur_opt, options[CP_OPT_EXIT].op_len)) {
@@ -183,6 +146,8 @@ int main(int argc, char *argv[])
             // 로그인 상태일때만 서버에 메시지를 전달하게 된다.
             if(usr_state == USER_LOGIN_STATE) {
                 ms.state = MSG_DATA_STATE;
+                memcpy(ms.id, id, strlen(id));
+                ms.id[strlen(id)] = '\0';
                 strcpy(ms.message, str);
                 write(sock, (char *)&ms, sizeof(msgst));
             }
@@ -205,7 +170,7 @@ void print_error(char* err_msg)
 
     sprintf(buf, "%s%s", "ERROR: ", err_msg);
     insert_msg_list(MSG_ERROR_STATE, "", buf);
-    update_show_win();
+    cw_manage[CP_SHOW_WIN].update_handler();
 }
 
 int connect_server()
@@ -272,15 +237,15 @@ void *rcv_thread(void *data) {
                     while(usr_id = strtok(NULL, USER_DELIM)) {
                         insert_usr_list(usr_id, COLOR_PAIR(4));
                     }
-                    update_usr_win();
-                    wrefresh(chat_win);
+                    cw_manage[CP_ULIST_WIN].update_handler();
+                    wrefresh(cw_manage[CP_CHAT_WIN].win);
                     usr_state = USER_LOGIN_STATE;
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:
                     if(strcmp(id, ms.id)) {
                         insert_usr_list(ms.id, COLOR_PAIR(4));
-                        update_usr_win();
+                        cw_manage[CP_ULIST_WIN].update_handler();
                         break;
                     } else {
                         continue;
@@ -288,19 +253,19 @@ void *rcv_thread(void *data) {
                     // 서버로 부터 연결 해제된 사용자에 대한 알림.
                 case MSG_DELUSER_STATE:
                     delete_usr_list(ms.id);
-                    update_usr_win();
+                    cw_manage[CP_ULIST_WIN].update_handler();
                     break;
             }
 
             // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
             insert_msg_list(ms.state, ms.id, message_buf);
-            update_show_win();
-            wrefresh(chat_win);
+            cw_manage[CP_SHOW_WIN].update_handler();
+            wrefresh(cw_manage[CP_CHAT_WIN].win);
         }
     }
 }
 
-WINDOW *create_window(struct cp_win_ui ui)
+WINDOW *create_window(struct win_ui ui)
 {
     WINDOW *win;
 
@@ -356,19 +321,21 @@ void clear_info_list()
 
 void update_info_win()
 {
+    WINDOW *win = cw_manage[CP_INFO_WIN].win;
+    struct win_ui *ui = &cw_manage[CP_INFO_WIN].ui;
     int i = 0, cline = 0, line_max = 0;
     int print_y, print_x;
     struct info_list_node *node, *tnode;
 
-    line_max = info_ui.lines - 1;
+    line_max = ui->lines - 1;
 
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
-        print_y = (info_ui.lines - 2) - i;
+        print_y = (ui->lines - 2) - i;
         print_x = 1;
 
-        wmove(info_win, print_y, print_x);
-        wclrtoeol(info_win);
+        wmove(win, print_y, print_x);
+        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
@@ -376,27 +343,28 @@ void update_info_win()
             continue;
         }
 
-        wattron(info_win, node->attrs);
-        mvwprintw(info_win, print_y, print_x, node->message);
-        wattroff(info_win, node->attrs);
+        wattron(win, node->attrs);
+        mvwprintw(win, print_y, print_x, node->message);
+        wattroff(win, node->attrs);
         i++;
     }
     pthread_mutex_unlock(&info_list_lock);
 
-    draw_win_ui(info_win, info_ui);
+    draw_win_ui(win, *ui);
 }
 
 void update_local_info_win()
 {
+    WINDOW *win = cw_manage[CP_LO_INFO_WIN].win;
     int print_y, print_x;
 
     print_y = 1;
     print_x = 1;
 
-    wmove(local_info_win, print_y, print_x);
-    wclrtoeol(local_info_win);
-    mvwprintw(local_info_win, print_y, print_x, "cpu    usage: %d%%", 30);
-    draw_win_ui(local_info_win, local_info_ui);
+    wmove(win, print_y, print_x);
+    wclrtoeol(win);
+    mvwprintw(win, print_y, print_x, "cpu    usage: %d%%", 30);
+    draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
 }
 
 void insert_msg_list(int msg_type, char *usr_id, char *msg)
@@ -432,19 +400,21 @@ void clear_msg_list()
 
 void update_show_win()
 {
+    WINDOW *win = cw_manage[CP_SHOW_WIN].win;
+    struct win_ui *ui = &cw_manage[CP_SHOW_WIN].ui;
     int i = 0, cline = 0, line_max = 0;
     int print_y, print_x;
     struct msg_list_node *node, *tnode;
 
-    line_max = show_ui.lines - 1;
+    line_max = ui->lines - 1;
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
         print_x = 1;
-        print_y = (show_ui.lines - 2) - i;
+        print_y = (ui->lines - 2) - i;
 
-        wmove(show_win, print_y, print_x);
-        wclrtoeol(show_win);
+        wmove(win, print_y, print_x);
+        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
@@ -454,58 +424,58 @@ void update_show_win()
 
         switch(node->type) {
             case MSG_DATA_STATE:
-                mvwprintw(show_win, print_y, print_x, node->time);
-                wattron(show_win, COLOR_PAIR(1) | A_BOLD);
-                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
-                wattroff(show_win, COLOR_PAIR(1) | A_BOLD);
-                wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, print_y, print_x += strlen(node->id), MESSAGE_SEPARATOR);
-                wattroff(show_win, COLOR_PAIR(2));
-                wattron(show_win, COLOR_PAIR(1));
-                mvwprintw(show_win, print_y, print_x += strlen(MESSAGE_SEPARATOR), node->message);
-                wattroff(show_win, COLOR_PAIR(1));
+                mvwprintw(win, print_y, print_x, node->time);
+                wattron(win, COLOR_PAIR(1) | A_BOLD);
+                mvwprintw(win, print_y, print_x += strlen(node->time), node->id);
+                wattroff(win, COLOR_PAIR(1) | A_BOLD);
+                wattron(win, COLOR_PAIR(2));
+                mvwprintw(win, print_y, print_x += strlen(node->id), MESSAGE_SEPARATOR);
+                wattroff(win, COLOR_PAIR(2));
+                wattron(win, COLOR_PAIR(1));
+                mvwprintw(win, print_y, print_x += strlen(MESSAGE_SEPARATOR), node->message);
+                wattroff(win, COLOR_PAIR(1));
                 break;
 
             case MSG_DELUSER_STATE:
-                mvwprintw(show_win, print_y, print_x, node->time);
-                wattron(show_win, COLOR_PAIR(3) | A_BOLD);
-                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
-                wattroff(show_win, COLOR_PAIR(3) | A_BOLD);
-                wattron(show_win, COLOR_PAIR(3));
-                mvwprintw(show_win, print_y, print_x += strlen(node->id), "님이 퇴장 하셨습니다!");
-                wattroff(show_win, COLOR_PAIR(3));
+                mvwprintw(win, print_y, print_x, node->time);
+                wattron(win, COLOR_PAIR(3) | A_BOLD);
+                mvwprintw(win, print_y, print_x += strlen(node->time), node->id);
+                wattroff(win, COLOR_PAIR(3) | A_BOLD);
+                wattron(win, COLOR_PAIR(3));
+                mvwprintw(win, print_y, print_x += strlen(node->id), "님이 퇴장 하셨습니다!");
+                wattroff(win, COLOR_PAIR(3));
                 break;
 
             case MSG_NEWUSER_STATE:
-                mvwprintw(show_win, print_y, print_x, node->time);
-                wattron(show_win, COLOR_PAIR(2) | A_BOLD);
-                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->id);
-                wattroff(show_win, COLOR_PAIR(2) | A_BOLD);
-                wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, print_y, print_x += strlen(node->id), "님이 입장 하셨습니다!");
-                wattroff(show_win, COLOR_PAIR(2));
+                mvwprintw(win, print_y, print_x, node->time);
+                wattron(win, COLOR_PAIR(2) | A_BOLD);
+                mvwprintw(win, print_y, print_x += strlen(node->time), node->id);
+                wattroff(win, COLOR_PAIR(2) | A_BOLD);
+                wattron(win, COLOR_PAIR(2));
+                mvwprintw(win, print_y, print_x += strlen(node->id), "님이 입장 하셨습니다!");
+                wattroff(win, COLOR_PAIR(2));
                 break;
 
             case MSG_ERROR_STATE:
-                mvwprintw(show_win, print_y, print_x, node->time);
-                wattron(show_win, COLOR_PAIR(3));
-                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->message);
-                wattroff(show_win, COLOR_PAIR(3));
+                mvwprintw(win, print_y, print_x, node->time);
+                wattron(win, COLOR_PAIR(3));
+                mvwprintw(win, print_y, print_x += strlen(node->time), node->message);
+                wattroff(win, COLOR_PAIR(3));
                 break;
 
             case MSG_ALAM_STATE:
             default:
-                mvwprintw(show_win, print_y, print_x, node->time);
-                wattron(show_win, COLOR_PAIR(2));
-                mvwprintw(show_win, print_y, print_x += strlen(node->time), node->message);
-                wattroff(show_win, COLOR_PAIR(2));
+                mvwprintw(win, print_y, print_x, node->time);
+                wattron(win, COLOR_PAIR(2));
+                mvwprintw(win, print_y, print_x += strlen(node->time), node->message);
+                wattroff(win, COLOR_PAIR(2));
                 break;
         }
         i++;
     }
     pthread_mutex_unlock(&msg_list_lock);
 
-    draw_win_ui(show_win, show_ui);
+    draw_win_ui(win, *ui);
 }
 
 void insert_usr_list(char *id, int attrs)
@@ -553,33 +523,35 @@ void clear_usr_list()
 
 void update_usr_win()
 {
+    WINDOW *win = cw_manage[CP_ULIST_WIN].win;
+    struct win_ui *ui = &cw_manage[CP_ULIST_WIN].ui;
     int i = 0, cline = 0, line_max = 0;
     int print_y, print_x;
     struct usr_list_node *node, *tnode;
 
-    line_max = ulist_ui.lines;
+    line_max = ui->lines;
 
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         print_y = i + 1;
         print_x = 1;
 
-        wmove(ulist_win, print_y, print_x);
-        wclrtoeol(ulist_win);
+        wmove(win, print_y, print_x);
+        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
             free(node);
             continue;
         }
-        wattron(ulist_win, node->attrs);
-        mvwprintw(ulist_win, print_y, print_x, node->id);
-        wattroff(ulist_win, node->attrs);
+        wattron(win, node->attrs);
+        mvwprintw(win, print_y, print_x, node->id);
+        wattroff(win, node->attrs);
         i++;
     }
     pthread_mutex_unlock(&usr_list_lock);
 
-    draw_win_ui(ulist_win, ulist_ui);
+    draw_win_ui(win, *ui);
 }
 
 void current_time()
@@ -646,13 +618,13 @@ void *info_win_thread(void *data)
 
                     parse = strtok(buf, DELIM);
                     insert_info_list(parse, COLOR_PAIR(5));
-                    update_info_win();
-                    wrefresh(chat_win);
+                    cw_manage[CP_INFO_WIN].update_handler();
+                    wrefresh(cw_manage[CP_CHAT_WIN].win);
                     while(parse = strtok(NULL, DELIM)) {
                         sleep(1);
                         insert_info_list(parse, COLOR_PAIR(5));
-                        update_info_win();
-                        wrefresh(chat_win);
+                        cw_manage[CP_INFO_WIN].update_handler();
+                        wrefresh(cw_manage[CP_CHAT_WIN].win);
                     }
                 }
         }
@@ -662,21 +634,24 @@ void *info_win_thread(void *data)
 void *local_info_win_thread(void *data)
 {
     while(1) {
-        update_local_info_win();
-        wrefresh(chat_win);
+        cw_manage[CP_LO_INFO_WIN].update_handler();
+        wrefresh(cw_manage[CP_CHAT_WIN].win);
         sleep(1);
     }
 }
 
 void update_chat_win()
 {
-    wmove(chat_win, 1, 1);
-    wclrtoeol(chat_win);
-    draw_win_ui(chat_win, chat_ui);
+    WINDOW *win = cw_manage[CP_CHAT_WIN].win;
+
+    wmove(win, 1, 1);
+    wclrtoeol(win);
+    draw_win_ui(win, cw_manage[CP_CHAT_WIN].ui);
 }
 
 void resize_handler(int sig)
 {
+    int win_idx;
     struct winsize w;
 
     endwin();
@@ -691,88 +666,81 @@ void resize_handler(int sig)
 
     update_win_ui();
 
-    resize_win_ui(show_win, show_ui);
-    update_show_win();
-
-    resize_win_ui(ulist_win, ulist_ui);
-    update_usr_win();
-
-    resize_win_ui(info_win, info_ui);
-    update_info_win();
-
-    resize_win_ui(local_info_win, local_info_ui);
-    update_local_info_win();
-
-    resize_win_ui(chat_win, chat_ui);
-    update_chat_win();
+    for(win_idx= 0; win_idx < CP_MAX_WIN; win_idx++) {
+        resize_win_ui(
+                cw_manage[win_idx].win, 
+                cw_manage[win_idx].ui, 
+                cw_manage[win_idx].update_handler
+                );
+    }
 }
 
 void update_win_ui()
 {
-    show_ui.lines = (int)((term_y * 70)/100) - 3;
-    show_ui.cols = (term_x - 17);
-    show_ui.start_y = (int)((term_y * 30)/100);
-    show_ui.start_x = 16;
-    show_ui.left = '|';
-    show_ui.right= '|';
-    show_ui.top = '-';
-    show_ui.bottom = '-';
-    show_ui.ltop = '+';
-    show_ui.rtop = '+';
-    show_ui.lbottom = '+';
-    show_ui.rbottom = '+';
+    cw_manage[CP_SHOW_WIN].ui.lines = (int)((term_y * 70)/100) - 3;
+    cw_manage[CP_SHOW_WIN].ui.cols = (term_x - 17);
+    cw_manage[CP_SHOW_WIN].ui.start_y = (int)((term_y * 30)/100);
+    cw_manage[CP_SHOW_WIN].ui.start_x = 16;
+    cw_manage[CP_SHOW_WIN].ui.left = '|';
+    cw_manage[CP_SHOW_WIN].ui.right= '|';
+    cw_manage[CP_SHOW_WIN].ui.top = '-';
+    cw_manage[CP_SHOW_WIN].ui.bottom = '-';
+    cw_manage[CP_SHOW_WIN].ui.ltop = '+';
+    cw_manage[CP_SHOW_WIN].ui.rtop = '+';
+    cw_manage[CP_SHOW_WIN].ui.lbottom = '+';
+    cw_manage[CP_SHOW_WIN].ui.rbottom = '+';
 
-    info_ui.lines = (int)((term_y * 30)/100);
-    info_ui.cols = (term_x - 17)/2;
-    info_ui.start_y = 0;
-    info_ui.start_x = 16;
-    info_ui.left = '|';
-    info_ui.right= '|';
-    info_ui.top = '-';
-    info_ui.bottom = '-';
-    info_ui.ltop = '+';
-    info_ui.rtop = '+';
-    info_ui.lbottom = '+';
-    info_ui.rbottom = '+';
+    cw_manage[CP_INFO_WIN].ui.lines = (int)((term_y * 30)/100);
+    cw_manage[CP_INFO_WIN].ui.cols = (term_x - 17)/2;
+    cw_manage[CP_INFO_WIN].ui.start_y = 0;
+    cw_manage[CP_INFO_WIN].ui.start_x = 16;
+    cw_manage[CP_INFO_WIN].ui.left = '|';
+    cw_manage[CP_INFO_WIN].ui.right= '|';
+    cw_manage[CP_INFO_WIN].ui.top = '-';
+    cw_manage[CP_INFO_WIN].ui.bottom = '-';
+    cw_manage[CP_INFO_WIN].ui.ltop = '+';
+    cw_manage[CP_INFO_WIN].ui.rtop = '+';
+    cw_manage[CP_INFO_WIN].ui.lbottom = '+';
+    cw_manage[CP_INFO_WIN].ui.rbottom = '+';
 
-    local_info_ui.lines = (int)((term_y * 30)/100);
-    local_info_ui.cols = (term_x - 17)/2;
-    local_info_ui.start_y = 0;
-    local_info_ui.start_x = 16 + ((term_x - 17)/2);
-    local_info_ui.left = '|';
-    local_info_ui.right= '|';
-    local_info_ui.top = '-';
-    local_info_ui.bottom = '-';
-    local_info_ui.ltop = '+';
-    local_info_ui.rtop = '+';
-    local_info_ui.lbottom = '+';
-    local_info_ui.rbottom = '+';
+    cw_manage[CP_LO_INFO_WIN].ui.lines = (int)((term_y * 30)/100);
+    cw_manage[CP_LO_INFO_WIN].ui.cols = (term_x - 17)/2;
+    cw_manage[CP_LO_INFO_WIN].ui.start_y = 0;
+    cw_manage[CP_LO_INFO_WIN].ui.start_x = 16 + ((term_x - 17)/2);
+    cw_manage[CP_LO_INFO_WIN].ui.left = '|';
+    cw_manage[CP_LO_INFO_WIN].ui.right= '|';
+    cw_manage[CP_LO_INFO_WIN].ui.top = '-';
+    cw_manage[CP_LO_INFO_WIN].ui.bottom = '-';
+    cw_manage[CP_LO_INFO_WIN].ui.ltop = '+';
+    cw_manage[CP_LO_INFO_WIN].ui.rtop = '+';
+    cw_manage[CP_LO_INFO_WIN].ui.lbottom = '+';
+    cw_manage[CP_LO_INFO_WIN].ui.rbottom = '+';
 
-    ulist_ui.lines = (term_y - 4);
-    ulist_ui.cols = 15;
-    ulist_ui.start_y = 0;
-    ulist_ui.start_x = 0;
-    ulist_ui.left = '|';
-    ulist_ui.right= '|';
-    ulist_ui.top = '-';
-    ulist_ui.bottom = '-';
-    ulist_ui.ltop = '+';
-    ulist_ui.rtop = '+';
-    ulist_ui.lbottom = '+';
-    ulist_ui.rbottom = '+';
+    cw_manage[CP_ULIST_WIN].ui.lines = (term_y - 4);
+    cw_manage[CP_ULIST_WIN].ui.cols = 15;
+    cw_manage[CP_ULIST_WIN].ui.start_y = 0;
+    cw_manage[CP_ULIST_WIN].ui.start_x = 0;
+    cw_manage[CP_ULIST_WIN].ui.left = '|';
+    cw_manage[CP_ULIST_WIN].ui.right= '|';
+    cw_manage[CP_ULIST_WIN].ui.top = '-';
+    cw_manage[CP_ULIST_WIN].ui.bottom = '-';
+    cw_manage[CP_ULIST_WIN].ui.ltop = '+';
+    cw_manage[CP_ULIST_WIN].ui.rtop = '+';
+    cw_manage[CP_ULIST_WIN].ui.lbottom = '+';
+    cw_manage[CP_ULIST_WIN].ui.rbottom = '+';
 
-    chat_ui.lines = 3;
-    chat_ui.cols = (term_x - 1);
-    chat_ui.start_y = (term_y - 3);
-    chat_ui.start_x = 0;
-    chat_ui.left = '|';
-    chat_ui.right= '|';
-    chat_ui.top = '-';
-    chat_ui.bottom = '-';
-    chat_ui.ltop = '+';
-    chat_ui.rtop = '+';
-    chat_ui.lbottom = '+';
-    chat_ui.rbottom = '+';
+    cw_manage[CP_CHAT_WIN].ui.lines = 3;
+    cw_manage[CP_CHAT_WIN].ui.cols = (term_x - 1);
+    cw_manage[CP_CHAT_WIN].ui.start_y = (term_y - 3);
+    cw_manage[CP_CHAT_WIN].ui.start_x = 0;
+    cw_manage[CP_CHAT_WIN].ui.left = '|';
+    cw_manage[CP_CHAT_WIN].ui.right= '|';
+    cw_manage[CP_CHAT_WIN].ui.top = '-';
+    cw_manage[CP_CHAT_WIN].ui.bottom = '-';
+    cw_manage[CP_CHAT_WIN].ui.ltop = '+';
+    cw_manage[CP_CHAT_WIN].ui.rtop = '+';
+    cw_manage[CP_CHAT_WIN].ui.lbottom = '+';
+    cw_manage[CP_CHAT_WIN].ui.rbottom = '+';
 }
 
 void init_cp_chat()
@@ -797,19 +765,69 @@ void init_cp_chat()
     term_x = COLS;
 
     update_win_ui();
+    reg_update_win_func();
 }
 
-void resize_win_ui(WINDOW *win, struct cp_win_ui ui)
+void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update)
 {
     werase(win);
     wresize(win, ui.lines, ui.cols);
     mvwin(win, ui.start_y, ui.start_x);
     wrefresh(win);
+    update();
 }
 
-void draw_win_ui(WINDOW *win, struct cp_win_ui ui)
+void draw_win_ui(WINDOW *win, struct win_ui ui)
 {
     wborder(win, ui.right, ui.left, ui.top, ui.bottom, 
             ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
     wrefresh(win);
+}
+
+void reg_update_win_func()
+{
+    cw_manage[CP_CHAT_WIN].update_handler = update_chat_win;
+    cw_manage[CP_SHOW_WIN].update_handler = update_show_win;
+    cw_manage[CP_INFO_WIN].update_handler = update_info_win;
+    cw_manage[CP_LO_INFO_WIN].update_handler = update_local_info_win;
+    cw_manage[CP_ULIST_WIN].update_handler = update_usr_win;
+}
+
+void first_scr_ui()
+{
+    char *first_scr = "Enter your id: ";
+    char *srv_name_scr = "Server Name: ";
+    char *time_msg_scr = "Acess Time:";
+    char *current_time_scr = time_buf;
+
+    wattron(stdscr, COLOR_PAIR(1) | A_BOLD);
+    mvwprintw(stdscr, term_y/2 - 8, (term_x - strlen(motd_1))/2, motd_1);
+    mvwprintw(stdscr, term_y/2 - 7, (term_x - strlen(motd_1))/2, motd_2);
+    mvwprintw(stdscr, term_y/2 - 6, (term_x - strlen(motd_1))/2, motd_3);
+    mvwprintw(stdscr, term_y/2 - 5, (term_x - strlen(motd_1))/2, motd_4);
+    wattroff(stdscr, COLOR_PAIR(1) | A_BOLD);
+    wattron(stdscr, COLOR_PAIR(3) | A_BOLD);
+    mvwprintw(stdscr, term_y/2 - 4, (term_x - strlen(motd_1))/2, motd_5);
+    mvwprintw(stdscr, term_y/2 - 3, (term_x - strlen(motd_1))/2, motd_6);
+    wattroff(stdscr, COLOR_PAIR(3)| A_BOLD);
+    mvwprintw(stdscr, term_y/2, (term_x - strlen(first_scr))/2, first_scr); 
+    mvwprintw(stdscr, term_y/2 + 2, (term_x - strlen(srv_name_scr))/2 - 1, srv_name_scr);
+    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 - 1, time_msg_scr);
+    mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 + 12, current_time_scr);
+
+    //커서를 맨앞으로 이동
+    wmove(stdscr, term_y/2, ((term_x - strlen(first_scr))/2) + strlen(first_scr) + 1);
+    // 아이디 값을 받아서 저장
+    getstr(id);
+    //커서를 맨앞으로 이동
+    wmove(stdscr, term_y/2 + 2, ((term_x - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
+    getstr(srvname);
+}
+
+void create_cp_win()
+{
+    int win_idx;
+    for(win_idx = 0; win_idx < CP_MAX_WIN; win_idx++) {
+        cw_manage[win_idx].win = create_window(cw_manage[win_idx].ui);
+    }
 }
