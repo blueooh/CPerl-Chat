@@ -42,11 +42,13 @@ int main(int argc, char *argv[])
     initscr();
     start_color();
     // cperl-chat init
-    init_cp_chat();
+    cp_init_chat();
     // 첫 실행 화면
     first_scr_ui();
     // CPerl-Chat 윈도우 생성
-    create_cp_win();
+    clear();
+    refresh();
+    cp_create_win();
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -611,7 +613,6 @@ void *info_win_thread(void *data)
 
             default :
                 if(FD_ISSET(fd, &readfds)) {
-                    memset(buf, 0x00, MESSAGE_BUFFER_SIZE);
                     if(read(fd, buf, MESSAGE_BUFFER_SIZE) < 0) {
                         break;
                     }
@@ -743,7 +744,7 @@ void update_win_ui()
     cw_manage[CP_CHAT_WIN].ui.rbottom = '+';
 }
 
-void init_cp_chat()
+void cp_init_chat()
 {
     current_time();
 
@@ -773,7 +774,6 @@ void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update)
     werase(win);
     wresize(win, ui.lines, ui.cols);
     mvwin(win, ui.start_y, ui.start_x);
-    wrefresh(win);
     update();
 }
 
@@ -824,7 +824,7 @@ void first_scr_ui()
     getstr(srvname);
 }
 
-void create_cp_win()
+void cp_create_win()
 {
     int win_idx;
     for(win_idx = 0; win_idx < CP_MAX_WIN; win_idx++) {
