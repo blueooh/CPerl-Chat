@@ -80,16 +80,14 @@ int main(int argc, char *argv[])
 
         if(str[0] == '/') {
             cur_opt = str + 1;
-            if((options[CP_OPT_HELP].op_len == strlen(cur_opt)) && 
-                    !strncmp(options[CP_OPT_HELP].op_name, cur_opt, options[CP_OPT_HELP].op_len)) {
+            if(cp_option_check(cur_opt, CP_OPT_HELP, false)) {
                 int i;
                 for(i = 0; i < CP_OPT_MAX; i++) {
                     insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
                 }
                 cw_manage[CP_SHOW_WIN].update_handler();
                 continue;
-            } else if((options[CP_OPT_CONNECT].op_len == strlen(cur_opt)) &&
-                    !strncmp(options[CP_OPT_CONNECT].op_name, cur_opt, options[CP_OPT_CONNECT].op_len)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, false)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
@@ -106,8 +104,7 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-            } else if((options[CP_OPT_DISCONNECT].op_len == strlen(cur_opt)) &&
-                    !strncmp(options[CP_OPT_DISCONNECT].op_name, cur_opt, options[CP_OPT_DISCONNECT].op_len)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
                 pthread_cancel(rcv_pthread);
                 shutdown(sock, SHUT_RDWR);
@@ -118,8 +115,7 @@ int main(int argc, char *argv[])
                 cw_manage[CP_SHOW_WIN].update_handler();
                 usr_state = USER_LOGOUT_STATE;
 
-            } else if(!strncmp(options[CP_OPT_SCRIPT].op_name, 
-                        cur_opt, options[CP_OPT_SCRIPT].op_len)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
                 char tfile[FILE_NAME_MAX], tbuf[MESSAGE_BUFFER_SIZE];
 
                 argv_parse = strtok(str, EXEC_DELIM);
@@ -133,14 +129,12 @@ int main(int argc, char *argv[])
                     cw_manage[CP_INFO_WIN].update_handler();
                 }
 
-            } else if((options[CP_OPT_CLEAR].op_len == strlen(cur_opt)) &&
-                    !strncmp(options[CP_OPT_CLEAR].op_name, cur_opt, options[CP_OPT_CLEAR].op_len)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
                 // 메시지 출력창에 있는 메시지를 모두 지운다.
                 clear_msg_list();
                 cw_manage[CP_SHOW_WIN].update_handler();
 
-            } else if((options[CP_OPT_EXIT].op_len == strlen(cur_opt)) &&
-                    !strncmp(options[CP_OPT_EXIT].op_name, cur_opt, options[CP_OPT_EXIT].op_len)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
                 break;
             } 
 
@@ -331,13 +325,12 @@ void update_info_win()
 
     line_max = ui->lines - 1;
 
+    werase(win);
+
     pthread_mutex_lock(&info_list_lock);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
         print_y = (ui->lines - 2) - i;
         print_x = 1;
-
-        wmove(win, print_y, print_x);
-        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
@@ -363,8 +356,8 @@ void update_local_info_win()
     print_y = 1;
     print_x = 1;
 
-    wmove(win, print_y, print_x);
-    wclrtoeol(win);
+    werase(win);
+
     mvwprintw(win, print_y, print_x, "cpu    usage: %d%%", 30);
     draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
 }
@@ -410,13 +403,12 @@ void update_show_win()
 
     line_max = ui->lines - 1;
 
+    werase(win);
+
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
         print_x = 1;
         print_y = (ui->lines - 2) - i;
-
-        wmove(win, print_y, print_x);
-        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
@@ -533,13 +525,12 @@ void update_usr_win()
 
     line_max = ui->lines;
 
+    werase(win);
+
     pthread_mutex_lock(&usr_list_lock);
     list_for_each_entry_safe(node, tnode, &usr_list, list) {
         print_y = i + 1;
         print_x = 1;
-
-        wmove(win, print_y, print_x);
-        wclrtoeol(win);
 
         if(++cline >= line_max) {
             list_del(&node->list);
@@ -645,8 +636,7 @@ void update_chat_win()
 {
     WINDOW *win = cw_manage[CP_CHAT_WIN].win;
 
-    wmove(win, 1, 1);
-    wclrtoeol(win);
+    werase(win);
     draw_win_ui(win, cw_manage[CP_CHAT_WIN].ui);
 }
 
@@ -830,4 +820,20 @@ void cp_create_win()
     for(win_idx = 0; win_idx < CP_MAX_WIN; win_idx++) {
         cw_manage[win_idx].win = create_window(cw_manage[win_idx].ui);
     }
+}
+
+int cp_option_check(char *option, option_type type, bool arg)
+{
+    if(!arg) {
+        if((options[type].op_len == strlen(option)) && 
+                !strncmp(options[type].op_name, option, options[type].op_len)) {
+            return 1;
+        }
+    } else {
+        if(!strncmp(options[type].op_name, option, options[type].op_len)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
