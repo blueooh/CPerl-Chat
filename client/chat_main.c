@@ -211,7 +211,7 @@ void *rcv_thread(void *data) {
     int read_len;
     msgst ms;
     char message_buf[MESSAGE_BUFFER_SIZE];
-    char *usr_id;
+    char *usr_id, *pbuf;
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
@@ -228,10 +228,10 @@ void *rcv_thread(void *data) {
                     break;
                     // 서버로 부터 전체 사용자 목록을 받을 때
                 case MSG_USERLIST_STATE:
-                    usr_id = strtok(ms.message, USER_DELIM);
-                    insert_usr_list(usr_id, COLOR_PAIR(4));
-                    while(usr_id = strtok(NULL, USER_DELIM)) {
+                    pbuf = ms.message;
+                    while(usr_id = strtok(pbuf, USER_DELIM)) {
                         insert_usr_list(usr_id, COLOR_PAIR(4));
+                        pbuf = NULL;
                     }
                     cw_manage[CP_ULIST_WIN].update_handler();
                     wrefresh(cw_manage[CP_CHAT_WIN].win);
@@ -594,6 +594,7 @@ void *info_win_thread(void *data)
 
     //select fifo 파일변화 추적
     while(1) {
+        char *pbuf;
         system(plugin_cmd);
         state = select(fd + 1, &readfds, NULL, NULL, &timeout);
         switch(state) {
@@ -608,15 +609,13 @@ void *info_win_thread(void *data)
                         break;
                     }
 
-                    parse = strtok(buf, DELIM);
-                    insert_info_list(parse, COLOR_PAIR(5));
-                    cw_manage[CP_INFO_WIN].update_handler();
-                    wrefresh(cw_manage[CP_CHAT_WIN].win);
-                    while(parse = strtok(NULL, DELIM)) {
-                        sleep(1);
+                    pbuf = buf;
+                    while(parse = strtok(pbuf, DELIM)) {
                         insert_info_list(parse, COLOR_PAIR(5));
                         cw_manage[CP_INFO_WIN].update_handler();
                         wrefresh(cw_manage[CP_CHAT_WIN].win);
+                        pbuf = NULL;
+                        sleep(1);
                     }
                 }
         }
