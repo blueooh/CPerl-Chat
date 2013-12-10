@@ -24,7 +24,7 @@
 #define INFO_PIPE_FILE "./info_pipe"
 #else
 #define SERVER_ADDRESS "172.30.0.104"
-#define SERVER_PORT "8889"
+#define SERVER_PORT "8888"
 #define INFO_SCRIPT_PATH "/usr/bin/"
 #define INFO_PIPE_FILE "/tmp/info_pipe"
 #endif
