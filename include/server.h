@@ -11,7 +11,11 @@
 #include <list.h>
 #include <common.h>
 
+#ifdef TEST
+#define SERVER_PORT "8889"
+#else
 #define SERVER_PORT "8888"
+#endif
 #define SA  struct sockaddr
 #define EPOLL_SIZE 20
 #define USER_HASH_SIZE 20

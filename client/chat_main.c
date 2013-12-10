@@ -4,6 +4,7 @@
 struct cp_win_manage cw_manage[CP_MAX_WIN];
 static int term_y = 0, term_x = 0;
 int sock;
+struct linger ling;
 pthread_t rcv_pthread, info_win_pthread, local_info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
@@ -107,7 +108,7 @@ int main(int argc, char *argv[])
             } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
                 // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
                 pthread_cancel(rcv_pthread);
-                shutdown(sock, SHUT_RDWR);
+                close(sock);
                 // 사용자 목록 초기화
                 clear_usr_list();
                 cw_manage[CP_ULIST_WIN].update_handler();
@@ -180,6 +181,12 @@ int connect_server()
         print_error("socket error!\n");
         return -1;
     }
+
+    ling.l_onoff = 1;
+    ling.l_linger = 0;
+
+    setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+
     memset(&srv_addr, 0x0, sizeof(srv_addr));
     srv_addr.sin_family = AF_INET;
     srv_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
@@ -216,7 +223,13 @@ void *rcv_thread(void *data) {
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
-            pthread_exit(0);
+            close(sock);
+            usr_state = USER_LOGOUT_STATE; 
+            clear_usr_list();
+            cw_manage[CP_ULIST_WIN].update_handler();
+            insert_msg_list(MSG_ERROR_STATE, "", "connection closed with server!");
+            cw_manage[CP_SHOW_WIN].update_handler();
+            pthread_cancel(rcv_pthread);
         } else {
             // 서버로 부터 온 메시지의 종류를 구별한다.
             switch(ms.state) {
