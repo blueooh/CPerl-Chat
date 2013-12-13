@@ -385,8 +385,8 @@ void update_local_info_win()
 
     bf_cpu = cpu;
 
-    mvwprintw(win, print_y++, print_x, "CPU         : %.2f %%", 
-            (float)((100 * (cpu_user + cpu_sys + cpu_nice)) / cpu_tot));
+    mvwprintw(win, print_y++, print_x, "CPU         : %d %%", 
+            (unsigned int)((100 * (cpu_user + cpu_sys + cpu_nice)) / cpu_tot));
     mvwprintw(win, print_y++, print_x, "Memory      : %ld MB / %ld MB", 
             (unsigned long)memory.used/(1024*1024), (unsigned long)memory.total/(1024*1024));
 
