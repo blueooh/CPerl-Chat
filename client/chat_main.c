@@ -365,7 +365,6 @@ void update_local_info_win()
 {
     WINDOW *win = cw_manage[CP_LO_INFO_WIN].win;
     int print_y, print_x;
-    glibtop_cpu cpu;
     glibtop_mem memory;
 
     print_y = 1;
