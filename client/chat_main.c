@@ -243,7 +243,7 @@ void *rcv_thread(void *data) {
                 case MSG_USERLIST_STATE:
                     pbuf = ms.message;
                     while(usr_id = strtok(pbuf, USER_DELIM)) {
-                        insert_usr_list(usr_id, COLOR_PAIR(4));
+                        insert_usr_list(usr_id);
                         pbuf = NULL;
                     }
                     cw_manage[CP_ULIST_WIN].update_handler();
@@ -253,7 +253,7 @@ void *rcv_thread(void *data) {
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:
                     if(strcmp(id, ms.id)) {
-                        insert_usr_list(ms.id, COLOR_PAIR(4));
+                        insert_usr_list(ms.id);
                         cw_manage[CP_ULIST_WIN].update_handler();
                         break;
                     } else {
@@ -365,20 +365,25 @@ void update_local_info_win()
 {
     WINDOW *win = cw_manage[CP_LO_INFO_WIN].win;
     int print_y, print_x;
+    glibtop_cpu cpu;
+    glibtop_mem memory;
 
     print_y = 1;
     print_x = 1;
 
     werase(win);
 
-    mvwprintw(win, print_y, print_x, "cpu    usage: %d%%", 30);
+    glibtop_get_mem(&memory);
+
+    mvwprintw(win, print_y++, print_x, "Memory      : %ld MB / %ld MB", 
+            (unsigned long)memory.total/(1024*1024), (unsigned long)memory.used/(1024*1024));
+
     draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
 }
 
 void insert_msg_list(int msg_type, char *usr_id, char *msg)
 {
     struct msg_list_node *node, *tnode;
-
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     node->type = msg_type;
@@ -485,13 +490,12 @@ void update_show_win()
     draw_win_ui(win, *ui);
 }
 
-void insert_usr_list(char *id, int attrs)
+void insert_usr_list(char *id)
 {
     struct usr_list_node *node;
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
     strcpy(node->id, id);
-    node->attrs = attrs;
 
     pthread_mutex_lock(&usr_list_lock);
     list_add(&node->list, &usr_list);
@@ -550,9 +554,9 @@ void update_usr_win()
             free(node);
             continue;
         }
-        wattron(win, node->attrs);
+        wattron(win, COLOR_PAIR(4));
         mvwprintw(win, print_y, print_x, node->id);
-        wattroff(win, node->attrs);
+        wattroff(win, COLOR_PAIR(4));
         i++;
     }
     pthread_mutex_unlock(&usr_list_lock);
@@ -637,6 +641,8 @@ void *info_win_thread(void *data)
 
 void *local_info_win_thread(void *data)
 {
+    glibtop_init();
+
     while(1) {
         cw_manage[CP_LO_INFO_WIN].update_handler();
         wrefresh(cw_manage[CP_CHAT_WIN].win);

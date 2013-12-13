@@ -1,4 +1,6 @@
 #include <ncurses.h>
+#include <glibtop.h>
+#include <glibtop/mem.h>
 #include <locale.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -108,7 +110,7 @@ void insert_msg_list(int msg_type, char *usr_id, char *msg);
 void clear_msg_list();
 void update_show_win();
 
-void insert_usr_list(char *id, int attrs);
+void insert_usr_list(char *id);
 void delete_usr_list(char *id);
 void clear_usr_list();
 void update_usr_win();
