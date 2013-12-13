@@ -2,6 +2,7 @@
 #include <glibtop.h>
 #include <glibtop/cpu.h>
 #include <glibtop/mem.h>
+#include <glibtop/netload.h>
 #include <locale.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@
 #include <common.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <linux/netdevice.h>
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
@@ -31,6 +33,8 @@
 #define INFO_SCRIPT_PATH "/usr/bin/"
 #define INFO_PIPE_FILE "/tmp/info_pipe"
 #endif
+
+#define MAXINTERFACES 20
 
 typedef void (*cb_update)(void);
 

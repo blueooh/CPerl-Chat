@@ -365,30 +365,64 @@ void update_local_info_win()
 {
     WINDOW *win = cw_manage[CP_LO_INFO_WIN].win;
     int print_y, print_x;
-    static glibtop_cpu bf_cpu;
+    struct ifconf ifconf;
+    struct ifreq ifreq[MAXINTERFACES];
+    int i, if_cnt;
+    static int first_calculate = 0;
     unsigned long cpu_tot = 0, cpu_user = 0, cpu_sys = 0, cpu_nice = 0;
+    unsigned long net_bytes_in = 0, net_bytes_out = 0;
+    static glibtop_cpu bf_cpu;
+    static glibtop_netload bf_netload[MAXINTERFACES];
     glibtop_cpu cpu;
     glibtop_mem memory;
+    glibtop_netload netload[MAXINTERFACES];
 
     print_y = 1;
     print_x = 1;
 
     werase(win);
 
+    // cpu informaion
     glibtop_get_cpu(&cpu);
-    glibtop_get_mem(&memory);
-
     cpu_tot = cpu.total - bf_cpu.total;
     cpu_user = cpu.user - bf_cpu.user;
     cpu_sys = cpu.sys - bf_cpu.sys;
     cpu_nice = cpu.nice - bf_cpu.nice;
-
     bf_cpu = cpu;
+    if(first_calculate) {
+        mvwprintw(win, print_y++, print_x, "CPU         : %d %%", 
+                (unsigned int)((100 * (cpu_user + cpu_sys + cpu_nice)) / cpu_tot));
+    }
 
-    mvwprintw(win, print_y++, print_x, "CPU         : %d %%", 
-            (unsigned int)((100 * (cpu_user + cpu_sys + cpu_nice)) / cpu_tot));
-    mvwprintw(win, print_y++, print_x, "Memory      : %ld MB / %ld MB", 
-            (unsigned long)memory.used/(1024*1024), (unsigned long)memory.total/(1024*1024));
+    // memory information
+    glibtop_get_mem(&memory);
+    if(first_calculate) {
+        mvwprintw(win, print_y++, print_x, "Memory      : %ld MB / %ld MB", 
+                (unsigned long)memory.used/(1024*1024), (unsigned long)memory.total/(1024*1024));
+    }
+
+    // network information
+    ifconf.ifc_buf = (char *) ifreq;
+    ifconf.ifc_len = sizeof ifreq;
+    if(ioctl(sock, SIOCGIFCONF, &ifconf) == -1) {
+        print_error("ioctl error!");
+    }
+    if_cnt = ifconf.ifc_len / sizeof(ifreq[0]);
+
+    for(i = 0; i < if_cnt; i++) {
+        if(strncmp(ifreq[i].ifr_name, "lo", 2)) {
+            glibtop_get_netload(&netload[i], ifreq[i].ifr_name);
+            net_bytes_in = netload[i].bytes_in - bf_netload[i].bytes_in;
+            net_bytes_out = netload[i].bytes_out - bf_netload[i].bytes_out;
+            bf_netload[i] = netload[i];
+            if(first_calculate) {
+                mvwprintw(win, print_y++, print_x, "%s In/Out : %ld Bytes / %ld Bytes", 
+                        ifreq[i].ifr_name, (unsigned long)net_bytes_in, (unsigned long)net_bytes_out);
+            }
+        }
+    }
+
+    first_calculate = 1;
 
     draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
 }
