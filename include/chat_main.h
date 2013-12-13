@@ -1,5 +1,6 @@
 #include <ncurses.h>
 #include <glibtop.h>
+#include <glibtop/cpu.h>
 #include <glibtop/mem.h>
 #include <locale.h>
 #include <pthread.h>
