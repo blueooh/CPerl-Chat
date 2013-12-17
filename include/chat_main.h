@@ -95,17 +95,15 @@ struct msg_list_node {
 
 struct info_list_node {
     struct list_head list;
-    int attrs;
     char message[TOTAL_MESSAGE_SIZE];
 };
 
 struct usr_list_node {
     struct list_head list;
-    int attrs;
     char id[ID_SIZE];
 };
 
-void insert_info_list(char *info, int attrs);
+void insert_info_list(char *info);
 void clear_info_list();
 void update_info_win();
 

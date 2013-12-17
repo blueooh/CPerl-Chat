@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
                     sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
                 } else {
                     sprintf(tbuf, "error: %s cannot be loaded!", tfile);
-                    insert_info_list(tbuf, COLOR_PAIR(3));
+                    insert_info_list(tbuf);
                     cw_manage[CP_INFO_WIN].update_handler();
                 }
 
@@ -301,13 +301,12 @@ void set_env()
     }
 }
 
-void insert_info_list(char *info, int attrs)
+void insert_info_list(char *info)
 {
     struct info_list_node *node;
 
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
     strcpy(node->message, info);
-    node->attrs = attrs;
 
     pthread_mutex_lock(&info_list_lock);
     list_add(&node->list, &info_list);
@@ -351,9 +350,9 @@ void update_info_win()
             continue;
         }
 
-        wattron(win, node->attrs);
+        wattron(win, COLOR_PAIR(5));
         mvwprintw(win, print_y, print_x, node->message);
-        wattroff(win, node->attrs);
+        wattroff(win, COLOR_PAIR(5));
         i++;
     }
     pthread_mutex_unlock(&info_list_lock);
@@ -637,7 +636,7 @@ void *info_win_thread(void *data)
     char *file_name  = INFO_PIPE_FILE;
     struct timeval timeout = { .tv_sec = 60, .tv_usec = 0 };
 
-    fd_set readfds, writefds;
+    fd_set readfds, tmpfds;
 
     //fifo 파일의 존재 확인
     if(!access(file_name, F_OK)) {
@@ -658,8 +657,9 @@ void *info_win_thread(void *data)
     //select fifo 파일변화 추적
     while(1) {
         char *pbuf;
+        tmpfds = readfds;
         system(plugin_cmd);
-        state = select(fd + 1, &readfds, NULL, NULL, &timeout);
+        state = select(fd + 1, &tmpfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
                 perror("select error : ");
@@ -667,14 +667,14 @@ void *info_win_thread(void *data)
                 break;
 
             default :
-                if(FD_ISSET(fd, &readfds)) {
+                if(FD_ISSET(fd, &tmpfds)) {
                     if(read(fd, buf, MESSAGE_BUFFER_SIZE) < 0) {
                         break;
                     }
 
                     pbuf = buf;
                     while(parse = strtok(pbuf, DELIM)) {
-                        insert_info_list(parse, COLOR_PAIR(5));
+                        insert_info_list(parse);
                         cw_manage[CP_INFO_WIN].update_handler();
                         wrefresh(cw_manage[CP_CHAT_WIN].win);
                         pbuf = NULL;
