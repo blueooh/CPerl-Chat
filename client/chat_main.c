@@ -631,7 +631,7 @@ void *info_win_thread(void *data)
 {
     int n, fd;
     int state;
-    char buf[MESSAGE_BUFFER_SIZE];
+    char buf[MESSAGE_BUFFER_SIZE+1];
     char *parse;
     char *file_name  = INFO_PIPE_FILE;
     struct timeval timeout = { .tv_sec = 60, .tv_usec = 0 };
@@ -657,22 +657,25 @@ void *info_win_thread(void *data)
     //select fifo 파일변화 추적
     while(1) {
         char *pbuf;
+        int rlen = 0;
+
         tmpfds = readfds;
         system(plugin_cmd);
         state = select(fd + 1, &tmpfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
-                perror("select error : ");
-                exit(0);
+                perror("info thread select error!");
                 break;
 
             default :
                 if(FD_ISSET(fd, &tmpfds)) {
-                    if(read(fd, buf, MESSAGE_BUFFER_SIZE) < 0) {
+                    if((rlen = read(fd, buf, MESSAGE_BUFFER_SIZE)) < 0) {
                         break;
                     }
 
+                    buf[rlen] = '\0';
                     pbuf = buf;
+
                     while(parse = strtok(pbuf, DELIM)) {
                         insert_info_list(parse);
                         cw_manage[CP_INFO_WIN].update_handler();
@@ -803,6 +806,7 @@ void cp_init_chat()
     current_time();
 
     signal(SIGWINCH, resize_handler);
+    signal(SIGINT, sigint_handler);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
@@ -900,4 +904,9 @@ int cp_option_check(char *option, option_type type, bool arg)
     }
 
     return 0;
+}
+
+void sigint_handler(int sig)
+{
+    // To do somthing..
 }

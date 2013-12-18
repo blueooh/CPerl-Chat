@@ -103,6 +103,9 @@ struct usr_list_node {
     char id[ID_SIZE];
 };
 
+void resize_handler(int sig);
+void sigint_handler(int sig);
+
 void insert_info_list(char *info);
 void clear_info_list();
 void update_info_win();
@@ -134,7 +137,6 @@ void print_error(char* err_msg);
 int connect_server();
 void set_env();
 void current_time();
-void resize_handler(int sig);
 void update_win_ui();
 void reg_update_win_func();
 void first_scr_ui();
