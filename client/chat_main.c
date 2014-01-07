@@ -51,11 +51,13 @@ int main(int argc, char *argv[])
     refresh();
     cp_create_win();
 
+    /*
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
         return -1;
     }
+    */
     thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
