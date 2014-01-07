@@ -378,6 +378,12 @@ void update_local_info_win()
     glibtop_mem memory;
     glibtop_netload netload[MAXINTERFACES];
 
+    if(usr_state == USER_LOGOUT_STATE) {
+        werase(win);
+        draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
+        return;
+    }
+
     print_y = 1;
     print_x = 1;
 
