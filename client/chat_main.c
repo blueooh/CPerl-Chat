@@ -14,7 +14,7 @@ char plugin_cmd[MESSAGE_BUFFER_SIZE];
 
 struct cp_chat_options options[] = {
     {CP_OPT_HELP, "help", 4, "/help [no argument]: Show CPerl-Chat help messages"},
-    {CP_OPT_CONNECT, "connect", 7, "/connect [no argument]: Try connect to server"},
+    {CP_OPT_CONNECT, "connect", 7, "/connect [server name]: Try connect to server"},
     {CP_OPT_DISCONNECT, "disconnect", 10, "/disconnect [no argument]: Try disconnect from server"},
     {CP_OPT_SCRIPT, "script", 6, "/script [script name]: Excute script you made to plugin"},
     {CP_OPT_CLEAR, "clear", 5, "/clear [no argument]: Clear messages in show window"},
@@ -51,13 +51,11 @@ int main(int argc, char *argv[])
     refresh();
     cp_create_win();
 
-    /*
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
         return -1;
     }
-    */
     thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
         print_error("pthread_create error");
@@ -90,12 +88,17 @@ int main(int argc, char *argv[])
                 }
                 cw_manage[CP_SHOW_WIN].update_handler();
                 continue;
-            } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, false)) {
+            } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
                     insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
                     cw_manage[CP_SHOW_WIN].update_handler();
                     continue;
+                }
+                argv_parse = strtok(str, EXEC_DELIM);
+                argv_parse = strtok(NULL, EXEC_DELIM);
+                if(argv_parse) {
+                    strcpy(srvname, argv_parse);
                 }
 
                 // 사용자 목록 창과 리스트에 남아있는 사용자 목록을 초기화 한다.
@@ -191,7 +194,7 @@ int connect_server()
 
     memset(&srv_addr, 0x0, sizeof(srv_addr));
     srv_addr.sin_family = AF_INET;
-    srv_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
+    srv_addr.sin_addr.s_addr = inet_addr(srvname);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
         print_error("connect error!\n");
@@ -681,6 +684,7 @@ void *info_win_thread(void *data)
                         break;
                     }
 
+                    /*
                     buf[rlen] = '\0';
                     pbuf = buf;
 
@@ -691,6 +695,7 @@ void *info_win_thread(void *data)
                         pbuf = NULL;
                         sleep(1);
                     }
+                    */
                 }
         }
     }
