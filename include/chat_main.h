@@ -104,7 +104,6 @@ struct usr_list_node {
 };
 
 void resize_handler(int sig);
-void sigint_handler(int sig);
 
 void insert_info_list(char *info);
 void clear_info_list();

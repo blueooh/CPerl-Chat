@@ -819,7 +819,8 @@ void cp_init_chat()
     current_time();
 
     signal(SIGWINCH, resize_handler);
-    signal(SIGINT, sigint_handler);
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
@@ -917,9 +918,4 @@ int cp_option_check(char *option, option_type type, bool arg)
     }
 
     return 0;
-}
-
-void sigint_handler(int sig)
-{
-    // To do somthing..
 }
