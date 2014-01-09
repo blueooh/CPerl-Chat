@@ -53,12 +53,12 @@ int main(int argc, char *argv[])
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
-        print_error("pthread_create error");
+        print_error("pthread_create error(%d)", thr_id);
         return -1;
     }
     thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
-        print_error("pthread_create error");
+        print_error("pthread_create error(%d)", thr_id);
         return -1;
     }
 
@@ -166,11 +166,13 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void print_error(char* err_msg)
+void print_error(const char* err_msg, ...)
 {
     char buf[MESSAGE_BUFFER_SIZE];
 
-    sprintf(buf, "%s%s", "ERROR: ", err_msg);
+    cpchat_va_format(err_msg);
+
+    sprintf(buf, "%s%s", "ERROR: ", vbuffer);
     insert_msg_list(MSG_ERROR_STATE, "", buf);
     cw_manage[CP_SHOW_WIN].update_handler();
 }
@@ -183,7 +185,7 @@ int connect_server()
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(!sock) {
-        print_error("socket error!\n");
+        print_error("socket error(%d)!\n", sock);
         return -1;
     }
 
@@ -197,7 +199,7 @@ int connect_server()
     srv_addr.sin_addr.s_addr = inet_addr(srvname);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-        print_error("connect error!\n");
+        print_error("connect error to %s:%s!\n", srvname, SERVER_PORT);
         close(sock);
         return -1;
     }
@@ -205,7 +207,7 @@ int connect_server()
     // 메시지를 받는 역할을 하는 쓰레드 생성
     thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
     if(thr_id < 0) {
-        print_error("pthread_create error");
+        print_error("pthread_create error(%d)", thr_id);
         close(sock);
         return -1;
     }

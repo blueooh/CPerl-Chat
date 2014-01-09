@@ -132,7 +132,7 @@ void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
 void *info_win_thread(void *data);
 void *local_info_win_thread(void *data);
-void print_error(char* err_msg);
+void print_error(const char* err_msg, ...);
 int connect_server();
 void set_env();
 void current_time();
