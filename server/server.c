@@ -139,33 +139,39 @@ int main(int argc, char **argv)
 
                             if(exist_usr_list(usr_data)) {
                                 printf("exist user!\n");
-                                //something to do...
+                                tmp_ms.state = MSG_ALAM_STATE;
+                                strcpy(tmp_ms.message, "ID Exists already, re-connect to server after change your ID!");
+                                write(usr_data.sock, (char *)&tmp_ms, sizeof(msgst));
+                                epoll_ctl(efd, EPOLL_CTL_DEL, usr_data.sock, events);
+                                printf("close user!\n");
+                                close(usr_data.sock);
+                                break;
+                            } else {
+                                // 사용자를 리스트에 추가
+                                insert_usr_list(usr_data);
+
+                                // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
+                                tmp_ms.state = MSG_USERLIST_STATE;
+                                for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+                                    list_for_each_entry(node, &usr_list[hash], list) {
+                                        idx += sprintf(users + idx, "%s%s", node->data.id, USER_DELIM);
+                                    }
+                                }
+                                users[idx] = '\0';
+                                strcpy(tmp_ms.message, users);
+                                write(events[i].data.fd, (char *)&tmp_ms, sizeof(msgst));
+
+                                // 접속자들에게 새로운 사용자의 접속을 알린다.
+                                rcv_ms.state = MSG_NEWUSER_STATE;
                             }
-
-                            // 사용자를 리스트에 추가
-                            insert_usr_list(usr_data);
-
-                            // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
-                            tmp_ms.state = MSG_USERLIST_STATE;
+                        default:
+                            // 모든 사용자에게 서버가 받은 메시지를 전달
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
-                                    idx += sprintf(users + idx, "%s%s", node->data.id, USER_DELIM);
+                                    write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
                                 }
                             }
-                            users[idx] = '\0';
-                            strcpy(tmp_ms.message, users);
-                            write(events[i].data.fd, (char *)&tmp_ms, sizeof(msgst));
-
-                            // 접속자들에게 새로운 사용자의 접속을 알린다.
-                            rcv_ms.state = MSG_NEWUSER_STATE;
                             break;
-                    }
-
-                    // 모든 사용자에게 서버가 받은 메시지를 전달
-                    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-                        list_for_each_entry(node, &usr_list[hash], list) {
-                            write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
-                        }
                     }
                 }
             }
