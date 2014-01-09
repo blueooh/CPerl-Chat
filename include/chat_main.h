@@ -105,13 +105,13 @@ struct usr_list_node {
 
 void resize_handler(int sig);
 
-void insert_info_list(char *info);
+void insert_info_list(const char *info, ...);
 void clear_info_list();
 void update_info_win();
 
 void update_local_info_win();
 
-void insert_msg_list(int msg_type, char *usr_id, char *msg);
+void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...);
 void clear_msg_list();
 void update_show_win();
 

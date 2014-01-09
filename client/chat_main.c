@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                 usr_state = USER_LOGOUT_STATE;
 
             } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
-                char tfile[FILE_NAME_MAX], tbuf[MESSAGE_BUFFER_SIZE];
+                char tfile[FILE_NAME_MAX];
 
                 argv_parse = strtok(str, EXEC_DELIM);
                 argv_parse = strtok(NULL, EXEC_DELIM);
@@ -130,8 +130,7 @@ int main(int argc, char *argv[])
                 if(!access(tfile, R_OK | X_OK)) {
                     sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
                 } else {
-                    sprintf(tbuf, "error: %s cannot be loaded!", tfile);
-                    insert_info_list(tbuf);
+                    insert_info_list("error: %s cannot be loaded!", tfile);
                     cw_manage[CP_INFO_WIN].update_handler();
                 }
 
@@ -308,12 +307,14 @@ void set_env()
     }
 }
 
-void insert_info_list(char *info)
+void insert_info_list(const char *info, ...)
 {
     struct info_list_node *node;
 
+    cpchat_va_format(info);
+
     node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
-    strcpy(node->message, info);
+    strcpy(node->message, vbuffer);
 
     pthread_mutex_lock(&info_list_lock);
     list_add(&node->list, &info_list);
@@ -439,16 +440,18 @@ void update_local_info_win()
     draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
 }
 
-void insert_msg_list(int msg_type, char *usr_id, char *msg)
+void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
 {
     struct msg_list_node *node, *tnode;
+
+    cpchat_va_format(msg);
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     node->type = msg_type;
     current_time();
     strcpy(node->time, time_buf);
     strcpy(node->id, usr_id);
-    strcpy(node->message, msg);
+    strcpy(node->message, vbuffer);
 
     pthread_mutex_lock(&msg_list_lock);
     list_add(&node->list, &msg_list);
