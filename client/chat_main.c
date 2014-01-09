@@ -167,18 +167,17 @@ int main(int argc, char *argv[])
 
 void print_error(const char* err_msg, ...)
 {
-    char buf[MESSAGE_BUFFER_SIZE];
-
     cpchat_va_format(err_msg);
 
-    sprintf(buf, "%s%s", "ERROR: ", vbuffer);
-    insert_msg_list(MSG_ERROR_STATE, "", buf);
+    insert_msg_list(MSG_ERROR_STATE, "", "%s%s", "ERROR: ", vbuffer);
     cw_manage[CP_SHOW_WIN].update_handler();
 }
 
 int connect_server()
 {
     struct sockaddr_in srv_addr;
+    struct hostent *entry;
+    char *resolved_host;
     int thr_id;
     msgst ms;
 
@@ -193,9 +192,17 @@ int connect_server()
 
     setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
 
+    entry = gethostbyname(srvname);
+    if(!entry) {
+        print_error("failed host lookup -->%s, check your server name!", srvname);
+    } else {
+        //print_error("ip: %s", );
+        resolved_host = inet_ntoa((struct in_addr) *((struct in_addr *) entry->h_addr_list[0]));
+    }
+
     memset(&srv_addr, 0x0, sizeof(srv_addr));
     srv_addr.sin_family = AF_INET;
-    srv_addr.sin_addr.s_addr = inet_addr(srvname);
+    srv_addr.sin_addr.s_addr = inet_addr(resolved_host);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
         print_error("connect error to %s:%s!\n", srvname, SERVER_PORT);
