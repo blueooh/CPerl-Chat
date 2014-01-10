@@ -63,9 +63,6 @@ int main(int argc, char **argv)
         {
             perror("epoll wait error");
         }
-
-        //printf("event count: %d\n", n);
-
         // 만약 이벤트가 발생했다면 발생한 이벤트의 수만큼
         // 돌면서 데이터를 읽어 옵니다. 
         for (i = 0; i < n; i++)
@@ -75,7 +72,7 @@ int main(int argc, char **argv)
             if (events[i].data.fd == sfd)
             {
                 msgst ms;
-                char *msg = "Welcome LightChat World!";
+                char *msg = "Welcome to CPerl-Chat World!";
 
                 cfd = accept(sfd, (SA *)&clientaddr, &clilen);
                 ev.events = EPOLLIN;
