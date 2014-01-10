@@ -88,7 +88,7 @@ int main(int argc, char **argv)
             // 데이터를 읽는다.
             else
             {
-                msgst rcv_ms;
+                msgst rcv_ms, snd_ms;
                 ud user_data;
                 int hash;
                 struct user_list_node *node;
@@ -96,78 +96,79 @@ int main(int argc, char **argv)
                 readn = read(events[i].data.fd, (char *)&rcv_ms, 1024);
                 if (readn <= 0)
                 {
-                    // 끊어진 소켓에 대한 아이디를 구한다.
+                    // 끊어진 소켓, 아이디를 구한다.
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                         list_for_each_entry(node, &usr_list[hash], list) {
                             if(node->data.sock == events[i].data.fd) {
-                                strcpy(rcv_ms.id, node->data.id);
+                                strcpy(user_data.id, node->data.id);
+                                user_data.sock = node->data.sock;
                                 break;
                             }
                         }
                     }
 
-                    user_data.sock = events[i].data.fd;
-                    strcpy(user_data.id, rcv_ms.id);
                     delete_usr_list(user_data);
-                    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, events);
-                    printf("Log out user(%s)\n", rcv_ms.id);
+                    epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
+                    close(user_data.sock);
+                    printf("Log out user(%s)\n", user_data.id);
 
                     // 끊어진 사용자 정보를 다른 사용자들에게 알린다.
-                    rcv_ms.state = MSG_DELUSER_STATE;
+                    snd_ms.state = MSG_DELUSER_STATE;
+                    strcpy(snd_ms.id, user_data.id);
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                         list_for_each_entry(node, &usr_list[hash], list) {
-                            write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
+                            write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
                         }
                     }
-                    close(events[i].data.fd);
                 }
                 else
                 {
-                    ud usr_data;
-                    msgst tmp_ms;
-                    char users[MESSAGE_BUFFER_SIZE];
-                    int idx = 0;
-
                     switch(rcv_ms.state) {
                         case MSG_NEWCONNECT_STATE:
                             printf("Log in user(%s)\n", rcv_ms.id);
-                            usr_data.sock = events[i].data.fd;
-                            strcpy(usr_data.id, rcv_ms.id);
+                            user_data.sock = events[i].data.fd;
+                            strcpy(user_data.id, rcv_ms.id);
 
-                            if(exist_usr_list(usr_data)) {
-                                printf("exist user!\n");
-                                tmp_ms.state = MSG_ALAM_STATE;
-                                strcpy(tmp_ms.message, "ID Exists already, re-connect to server after change your ID!");
-                                write(usr_data.sock, (char *)&tmp_ms, sizeof(msgst));
-                                epoll_ctl(efd, EPOLL_CTL_DEL, usr_data.sock, events);
-                                printf("close user!\n");
-                                close(usr_data.sock);
+                            if(exist_usr_list(user_data)) {
+                                snd_ms.state = MSG_ALAM_STATE;
+                                strcpy(snd_ms.message, "ID Exists already, re-connect to server after change your ID!");
+                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
+                                epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
+                                close(user_data.sock);
                                 break;
                             } else {
+                                int idx = 0;
                                 // 사용자를 리스트에 추가
-                                insert_usr_list(usr_data);
+                                insert_usr_list(user_data);
 
                                 // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
-                                tmp_ms.state = MSG_USERLIST_STATE;
+                                snd_ms.state = MSG_USERLIST_STATE;
                                 for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                     list_for_each_entry(node, &usr_list[hash], list) {
-                                        idx += sprintf(users + idx, "%s%s", node->data.id, USER_DELIM);
+                                        idx += sprintf(snd_ms.message + idx, "%s%s", node->data.id, USER_DELIM);
                                     }
                                 }
-                                users[idx] = '\0';
-                                strcpy(tmp_ms.message, users);
-                                write(events[i].data.fd, (char *)&tmp_ms, sizeof(msgst));
+                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
 
                                 // 접속자들에게 새로운 사용자의 접속을 알린다.
-                                rcv_ms.state = MSG_NEWUSER_STATE;
+                                snd_ms.state = MSG_NEWUSER_STATE;
+                                strcpy(snd_ms.id, user_data.id);
+                                for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+                                    list_for_each_entry(node, &usr_list[hash], list) {
+                                        write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
+                                    }
+                                }
                             }
-                        default:
+                            break;
+                        case MSG_DATA_STATE:
                             // 모든 사용자에게 서버가 받은 메시지를 전달
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
                                     write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
                                 }
                             }
+                            break;
+                        default:
                             break;
                     }
                 }

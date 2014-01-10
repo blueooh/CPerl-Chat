@@ -171,6 +171,8 @@ void print_error(const char* err_msg, ...)
 
     insert_msg_list(MSG_ERROR_STATE, "", "%s%s", "ERROR: ", vbuffer);
     cw_manage[CP_SHOW_WIN].update_handler();
+
+    free(vbuffer);
 }
 
 int connect_server()
@@ -327,6 +329,8 @@ void insert_info_list(const char *info, ...)
     list_add(&node->list, &info_list);
     info_count++;
     pthread_mutex_unlock(&info_list_lock);
+
+    free(vbuffer);
 }
 
 void clear_info_list()
@@ -464,6 +468,8 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
     list_add(&node->list, &msg_list);
     msg_count++;
     pthread_mutex_unlock(&msg_list_lock);
+
+    free(vbuffer);
 }
 
 void clear_msg_list()
