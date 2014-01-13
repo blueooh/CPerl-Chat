@@ -83,6 +83,7 @@ int main(int argc, char **argv)
                 strcpy(ms.message, msg);
                 ms.message[strlen(msg)] = '\0';
                 write(cfd, (char *)&ms, sizeof(msgst));
+                printf("new connect ... : sock(%d)\n", cfd);
             }
             // 연결소켓에서 이벤트가 발생했다면
             // 데이터를 읽는다.
@@ -90,42 +91,51 @@ int main(int argc, char **argv)
             {
                 msgst rcv_ms, snd_ms;
                 ud user_data;
-                int hash;
+                int hash, found = 0;
                 struct user_list_node *node;
 
                 readn = read(events[i].data.fd, (char *)&rcv_ms, 1024);
                 if (readn <= 0)
                 {
+                    printf("readn <= 0 : readn value(%d)\n", readn);
                     // 끊어진 소켓, 아이디를 구한다.
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                         list_for_each_entry(node, &usr_list[hash], list) {
                             if(node->data.sock == events[i].data.fd) {
+                                found = 1;
                                 strcpy(user_data.id, node->data.id);
                                 user_data.sock = node->data.sock;
+                                printf("found close user: id(%s), sock(%d), hash(%d)\n", user_data.id, user_data.sock, hash);
                                 break;
                             }
                         }
                     }
 
-                    delete_usr_list(user_data);
-                    epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
-                    close(user_data.sock);
-                    printf("Log out user(%s)\n", user_data.id);
+                    if(found) {
+                        delete_usr_list(user_data);
+                        epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
+                        close(user_data.sock);
 
-                    // 끊어진 사용자 정보를 다른 사용자들에게 알린다.
-                    snd_ms.state = MSG_DELUSER_STATE;
-                    strcpy(snd_ms.id, user_data.id);
-                    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-                        list_for_each_entry(node, &usr_list[hash], list) {
-                            write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
+                        // 끊어진 사용자 정보를 다른 사용자들에게 알린다.
+                        snd_ms.state = MSG_DELUSER_STATE;
+                        strcpy(snd_ms.id, user_data.id);
+                        for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+                            list_for_each_entry(node, &usr_list[hash], list) {
+                                write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
+                            }
                         }
+
+                        printf("Log-out user(%s)\n", user_data.id);
+                    } else {
+                        printf("cannot fond user: sock(%d)\n", events[i].data.fd);
+                        close(events[i].data.fd);
+                        printf("anyway force close...\n");
                     }
                 }
                 else
                 {
                     switch(rcv_ms.state) {
                         case MSG_NEWCONNECT_STATE:
-                            printf("Log in user(%s)\n", rcv_ms.id);
                             user_data.sock = events[i].data.fd;
                             strcpy(user_data.id, rcv_ms.id);
 
@@ -139,6 +149,7 @@ int main(int argc, char **argv)
                             } else {
                                 int idx = 0;
                                 // 사용자를 리스트에 추가
+                                printf("log-in user: id(%s), sock(%d)\n", rcv_ms.id, user_data.sock);
                                 insert_usr_list(user_data);
 
                                 // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
@@ -206,6 +217,7 @@ void insert_usr_list(ud data)
     strcpy(node->data.id, data.id);
     hash = hash_func(data.id);
     list_add(&node->list, &usr_list[hash]);
+    printf("insert user list: id(%s), sock(%d), hash(%d)\n", data.id, data.sock, hash);
 }
 
 void delete_usr_list(ud data)
@@ -218,6 +230,7 @@ void delete_usr_list(ud data)
         if(!strcmp(data.id, node->data.id)) {
             list_del(&node->list);
             free(node);
+            printf("delete user list: id(%s), sock(%d), hash(%d)\n", data.id, data.sock, hash);
         }
     }
 }
