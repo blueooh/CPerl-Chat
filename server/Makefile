@@ -1,6 +1,6 @@
 TARGET=cperl-chatd
 INCS=-I../liblist -I../include
-OBJS=server.o
+OBJS=cp-server.o cp-log.o
 CC=-g -c
 LIB=-L../lib -llist
 SRCS=$(OBJ:.o=.c)
@@ -13,7 +13,8 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-server.o: server.c ../include/server.h ../include/common.h
+cp-server.o: cp-server.c ../include/cp-server.h ../include/cp-common.h
+cp-log.o: cp-log.c ../include/cp-log.h
 
 clean:
 	rm -rf $(TARGET) $(OBJS)

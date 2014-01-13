@@ -1,3 +1,6 @@
+#ifndef __LIST_H__
+#define __LIST_H__
+
 #define LIST_POISON1  ((void *) 0x00100100)
 #define LIST_POISON2  ((void *) 0x00200200)
 
@@ -44,3 +47,4 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
         &pos->member != (head);                    \
         pos = n, n = list_entry(n->member.next, typeof(*n), member))
 
+#endif

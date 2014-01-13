@@ -1,6 +1,6 @@
 TARGET=cperl-chat
 INCS=-I../liblist -I../include -I/usr/include/libgtop-2.0 -I/usr/include/glib-2.0
-OBJS=chat_main.o
+OBJS=cperl-chat.o
 CC=-g -c
 LIB=-L../lib -lncursesw -lgtop-2.0 -lglib-2.0 -lpthread -llist
 SRCS=$(OBJ:.o=.c)
@@ -13,7 +13,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-chat_main.o: chat_main.c ../include/chat_main.h ../include/common.h ../include/motd.h
+cperl-chat.o: cperl-chat.c ../include/cperl-chat.h ../include/cp-common.h ../include/cp-motd.h
 
 dep:
 	gccmakedep $(INCS) $(SRCS)
