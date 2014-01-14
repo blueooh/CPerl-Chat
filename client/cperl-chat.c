@@ -1,6 +1,4 @@
 #include <cperl-chat.h>
-#include <cp-motd.h>
-#include <cp-va_format.h>
 
 struct cp_win_manage cw_manage[CP_MAX_WIN];
 static int term_y = 0, term_x = 0;
@@ -50,16 +48,19 @@ int main(int argc, char *argv[])
     // CPerl-Chat 윈도우 생성
     clear();
     refresh();
+
+    cp_log("start cperl-chat...\n");
+
     cp_create_win();
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
-        print_error("pthread_create error(%d)", thr_id);
+        cp_log("info pthread_create error(%d)", thr_id);
         return -1;
     }
     thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
-        print_error("pthread_create error(%d)", thr_id);
+        cp_log("local_info pthread_create error(%d)", thr_id);
         return -1;
     }
 
@@ -186,7 +187,7 @@ int connect_server()
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(!sock) {
-        print_error("socket error(%d)!\n", sock);
+        cp_log_ui("socket error: sock(%d)\n", sock);
         return -1;
     }
 
@@ -197,9 +198,8 @@ int connect_server()
 
     entry = gethostbyname(srvname);
     if(!entry) {
-        print_error("failed host lookup -->%s, check your server name!", srvname);
+        cp_log_ui("failed host lookup -->%s, check your server name!", srvname);
     } else {
-        //print_error("ip: %s", );
         resolved_host = inet_ntoa((struct in_addr) *((struct in_addr *) entry->h_addr_list[0]));
     }
 
@@ -208,7 +208,7 @@ int connect_server()
     srv_addr.sin_addr.s_addr = inet_addr(resolved_host);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-        print_error("connect error to %s:%s!\n", srvname, SERVER_PORT);
+        cp_log_ui("connect error: srvname(%s), port(%s)\n", srvname, SERVER_PORT);
         close(sock);
         return -1;
     }
@@ -216,7 +216,7 @@ int connect_server()
     // 메시지를 받는 역할을 하는 쓰레드 생성
     thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
     if(thr_id < 0) {
-        print_error("pthread_create error(%d)", thr_id);
+        cp_log("rcv pthread_create error: %d", thr_id);
         close(sock);
         return -1;
     }
@@ -239,12 +239,11 @@ void *rcv_thread(void *data) {
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
+            cp_log_ui("connection closed with server: %d", read_len);
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
             clear_usr_list();
             cw_manage[CP_ULIST_WIN].update_handler();
-            insert_msg_list(MSG_ERROR_STATE, "", "connection closed with server!");
-            cw_manage[CP_SHOW_WIN].update_handler();
             pthread_cancel(rcv_pthread);
         } else {
             // 서버로 부터 온 메시지의 종류를 구별한다.
@@ -674,11 +673,11 @@ void *info_win_thread(void *data)
     }
 
     if(mkfifo(file_name, 0644) < 0) {
-        perror("mkfifo error : ");
+        cp_log("make pipe file error : %s", file_name);
     }
 
     if((fd = open(file_name, O_RDWR)) == -1 ) {
-        perror("file open error : ");
+        cp_log("pipe file open error : %s", file_name);
     }
 
     FD_ZERO(&readfds);
@@ -694,16 +693,16 @@ void *info_win_thread(void *data)
         state = select(fd + 1, &tmpfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
-                perror("info thread select error!");
+                cp_log("info thread select error!: state(%d)", state);
                 break;
 
             default :
                 if(FD_ISSET(fd, &tmpfds)) {
                     if((rlen = read(fd, buf, MESSAGE_BUFFER_SIZE)) < 0) {
+                        cp_log("info read error: %d", rlen);
                         break;
                     }
 
-                    /*
                     buf[rlen] = '\0';
                     pbuf = buf;
 
@@ -714,7 +713,6 @@ void *info_win_thread(void *data)
                         pbuf = NULL;
                         sleep(1);
                     }
-                    */
                 }
         }
     }
@@ -835,6 +833,8 @@ void update_win_ui()
 
 void cp_init_chat()
 {
+    cp_init_log("/var/log/cperl-chat.log");
+
     current_time();
 
     signal(SIGWINCH, resize_handler);
@@ -937,4 +937,14 @@ int cp_option_check(char *option, option_type type, bool arg)
     }
 
     return 0;
+}
+
+void cp_log_ui(char *log, ...)
+{
+    cp_va_format(log);
+
+    cp_log(vbuffer);
+    print_error(vbuffer);
+    
+    free(vbuffer);
 }

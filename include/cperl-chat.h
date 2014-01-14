@@ -1,6 +1,10 @@
 #ifndef __CPERL_CHAT_H__
 #define __CPERL_CHAT_H__
+
+#include <cp-motd.h>
+#include <cp-va_format.h>
 #include <cp-list.h>
+#include <cp-log.h>
 #include <cp-common.h>
 
 #include <ncurses.h>
@@ -130,6 +134,7 @@ void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update);
 void draw_win_ui(WINDOW *win, struct win_ui ui);
 
 int cp_option_check(char *option, option_type type, bool arg);
+void cp_log_ui(char *log, ...);
 
 WINDOW *create_window(struct win_ui ui);
 void destroy_window(WINDOW *win);

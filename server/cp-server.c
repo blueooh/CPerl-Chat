@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
     int efd;
 
-    cp_init_log("/var/log/cperl-chat.log");
+    cp_init_log("/var/log/cperl-chatd.log");
     if(log_fd < 0) {
         printf("log init error: %d\n", log_fd);
         return -1;
