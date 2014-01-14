@@ -4,8 +4,6 @@ int log_fd;
 
 int cp_init_log(const char * file)
 {
-    int fd, flags = 0;
-
     log_fd = open(file, O_RDWR| O_APPEND | O_CREAT, 0644);
     if(!log_fd) {
         return -1;
@@ -26,6 +24,8 @@ int cp_log(char *buf, ...)
     write(log_fd, log_buf, log_size);
 
     free(vbuffer);
+
+    return log_size;
 }
 
 int cp_get_log_time(char *buf, int size)

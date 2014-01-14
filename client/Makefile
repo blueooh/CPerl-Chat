@@ -1,13 +1,11 @@
 TARGET=cperl-chat
-INCS=-I../liblist -I../include -I/usr/include/libgtop-2.0 -I/usr/include/glib-2.0
-OBJS=cperl-chat.o
+INCS=-I../include -I/usr/include/libgtop-2.0 -I/usr/include/glib-2.0
+OBJS=cperl-chat.o ../module/cp-list.o ../module/cp-log.o
 CC=-g -c
-LIB=-L../lib -lncursesw -lgtop-2.0 -lglib-2.0 -lpthread -llist
+LIB=-lncursesw -lgtop-2.0 -lglib-2.0 -lpthread
 SRCS=$(OBJ:.o=.c)
 
 $(TARGET): $(OBJS)
-	mkdir -p ../lib;
-	cd ../liblist;make;
 	gcc $(INCS) -o $@ $^ $(LIB)
 
 .c.o:
@@ -20,10 +18,8 @@ dep:
 
 clean:
 	rm -rf $(TARGET) $(OBJS)
-	cd ../liblist/;make clean
 
 install:
-	cp ../lib/liblist.so /usr/lib
 	cp ../script/naver_rank /usr/bin/
 	chmod 777 /usr/bin/naver_rank
 	cp ../script/weather /usr/bin/
@@ -31,5 +27,4 @@ install:
 	cp $(TARGET) /usr/bin
 
 uninstall:
-	rm -rf /usr/lib/liblist.so
 	rm -rf /usr/bin/$(TARGET)

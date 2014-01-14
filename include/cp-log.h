@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #define CP_LOG_BUFFER   1024
 

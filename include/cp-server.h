@@ -1,6 +1,7 @@
 #ifndef __CP_SERVER_H__
 #define __CP_SERVER_H__
 
+#include <cp-list.h>
 #include <cp-log.h>
 #include <cp-common.h>
 
@@ -14,7 +15,6 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <list.h>
 
 #ifdef TEST
 #define SERVER_PORT "8889"

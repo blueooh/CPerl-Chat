@@ -1,5 +1,6 @@
 #ifndef __CPERL_CHAT_H__
 #define __CPERL_CHAT_H__
+#include <cp-list.h>
 #include <cp-common.h>
 
 #include <ncurses.h>
@@ -17,7 +18,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <list.h>
 #include <sys/stat.h> 
 #include <sys/select.h> 
 #include <fcntl.h> 
