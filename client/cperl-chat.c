@@ -239,8 +239,15 @@ void *rcv_thread(void *data) {
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
-        if(read_len <= 0) {
-            cp_log_ui(MSG_ERROR_STATE, "connection closed with server: read_len(%d), errno(%d)", read_len, errno);
+        if(read_len == 0) {
+            cp_log_ui(MSG_ERROR_STATE, "connection closed with server: %s", srvname);
+            close(sock);
+            usr_state = USER_LOGOUT_STATE; 
+            clear_usr_list();
+            cw_manage[CP_ULIST_WIN].update_handler();
+            pthread_cancel(rcv_pthread);
+        } else if(read_len < 0) {
+            cp_log_ui(MSG_ERROR_STATE, "%s:errno(%d), read_len(%d)", strerror(errno), read_len, errno);
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
             clear_usr_list();
