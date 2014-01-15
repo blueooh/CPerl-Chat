@@ -134,14 +134,14 @@ void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update);
 void draw_win_ui(WINDOW *win, struct win_ui ui);
 
 int cp_option_check(char *option, option_type type, bool arg);
-void cp_log_ui(char *log, ...);
+void cp_log_ui(int type, char *log, ...);
+void cp_log_print(int type, const char* err_msg, ...);
 
 WINDOW *create_window(struct win_ui ui);
 void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
 void *info_win_thread(void *data);
 void *local_info_win_thread(void *data);
-void print_error(const char* err_msg, ...);
 int connect_server();
 void set_env();
 void current_time();

@@ -55,12 +55,12 @@ int main(int argc, char *argv[])
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
-        cp_log("info pthread_create error(%d)", thr_id);
+        cp_log_ui(MSG_ERROR_STATE, "info pthread_create error(%d)", thr_id);
         return -1;
     }
     thr_id = pthread_create(&local_info_win_pthread, NULL, local_info_win_thread, NULL);
     if(thr_id < 0) {
-        cp_log("local_info pthread_create error(%d)", thr_id);
+        cp_log_ui(MSG_ERROR_STATE, "local_info pthread_create error(%d)", thr_id);
         return -1;
     }
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
             } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    insert_msg_list(MSG_ALAM_STATE, "", "already connected!");
+                    cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)\n", srvname);
                     cw_manage[CP_SHOW_WIN].update_handler();
                     continue;
                 }
@@ -119,9 +119,8 @@ int main(int argc, char *argv[])
                 // 사용자 목록 초기화
                 clear_usr_list();
                 cw_manage[CP_ULIST_WIN].update_handler();
-                insert_msg_list(MSG_ERROR_STATE, "", "disconnected!");
-                cw_manage[CP_SHOW_WIN].update_handler();
                 usr_state = USER_LOGOUT_STATE;
+                cp_log_ui("disconnected: server(%s)\n", srvname);
 
             } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
                 char tfile[FILE_NAME_MAX];
@@ -132,8 +131,7 @@ int main(int argc, char *argv[])
                 if(!access(tfile, R_OK | X_OK)) {
                     sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
                 } else {
-                    insert_info_list("error: %s cannot be loaded!", tfile);
-                    cw_manage[CP_INFO_WIN].update_handler();
+                    cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!\n", tfile);
                 }
 
             } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
@@ -167,11 +165,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void print_error(const char* err_msg, ...)
+void cp_log_print(int type, const char* err_msg, ...)
 {
     cp_va_format(err_msg);
 
-    insert_msg_list(MSG_ERROR_STATE, "", "%s%s", "ERROR: ", vbuffer);
+    insert_msg_list(type, "", "%s%s", "-->", vbuffer);
     cw_manage[CP_SHOW_WIN].update_handler();
 
     free(vbuffer);
@@ -187,7 +185,7 @@ int connect_server()
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(!sock) {
-        cp_log_ui("socket error: sock(%d)\n", sock);
+        cp_log_ui(MSG_ERROR_STATE,  "socket error: sock(%d)\n", sock);
         return -1;
     }
 
@@ -198,7 +196,7 @@ int connect_server()
 
     entry = gethostbyname(srvname);
     if(!entry) {
-        cp_log_ui("failed host lookup -->%s, check your server name!", srvname);
+        cp_log_ui(MSG_ERROR_STATE, "failed host lookup: srv(%s), check your server name!", srvname);
     } else {
         resolved_host = inet_ntoa((struct in_addr) *((struct in_addr *) entry->h_addr_list[0]));
     }
@@ -208,7 +206,7 @@ int connect_server()
     srv_addr.sin_addr.s_addr = inet_addr(resolved_host);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-        cp_log_ui("connect error: srvname(%s), port(%s)\n", srvname, SERVER_PORT);
+        cp_log_ui(MSG_ERROR_STATE, "connect error: srvname(%s), port(%s)\n", srvname, SERVER_PORT);
         close(sock);
         return -1;
     }
@@ -216,7 +214,7 @@ int connect_server()
     // 메시지를 받는 역할을 하는 쓰레드 생성
     thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
     if(thr_id < 0) {
-        cp_log("rcv pthread_create error: %d", thr_id);
+        cp_log_ui(MSG_ERROR_STATE, "rcv pthread_create error: %d", thr_id);
         close(sock);
         return -1;
     }
@@ -225,7 +223,10 @@ int connect_server()
     // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
     ms.state = MSG_NEWCONNECT_STATE;
     strcpy(ms.id, id);
-    write(sock, (char *)&ms, sizeof(msgst));
+    if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "send new connect state error");
+        close(sock);
+    }
 
     return 0;
 }
@@ -239,7 +240,7 @@ void *rcv_thread(void *data) {
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
-            cp_log_ui("connection closed with server: %d", read_len);
+            cp_log_ui(MSG_ERROR_STATE, "connection closed with server: %d", read_len);
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
             clear_usr_list();
@@ -264,6 +265,7 @@ void *rcv_thread(void *data) {
                     cw_manage[CP_ULIST_WIN].update_handler();
                     wrefresh(cw_manage[CP_CHAT_WIN].win);
                     usr_state = USER_LOGIN_STATE;
+                    cp_log_ui(MSG_ALAM_STATE, "Connection complete!: server(%s)\n", srvname);
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:
@@ -429,7 +431,7 @@ void update_local_info_win()
     ifconf.ifc_buf = (char *) ifreq;
     ifconf.ifc_len = sizeof ifreq;
     if(ioctl(sock, SIOCGIFCONF, &ifconf) == -1) {
-        print_error("ioctl error!");
+        cp_log_ui(MSG_ERROR_STATE, "ioctl error!: -1");
     }
     if_cnt = ifconf.ifc_len / sizeof(ifreq[0]);
 
@@ -673,11 +675,11 @@ void *info_win_thread(void *data)
     }
 
     if(mkfifo(file_name, 0644) < 0) {
-        cp_log("make pipe file error : %s", file_name);
+        cp_log_ui(MSG_ERROR_STATE, "make pipe file error : %s", file_name);
     }
 
     if((fd = open(file_name, O_RDWR)) == -1 ) {
-        cp_log("pipe file open error : %s", file_name);
+        cp_log_ui(MSG_ERROR_STATE, "pipe file open error : %s", file_name);
     }
 
     FD_ZERO(&readfds);
@@ -693,13 +695,13 @@ void *info_win_thread(void *data)
         state = select(fd + 1, &tmpfds, NULL, NULL, &timeout);
         switch(state) {
             case -1:
-                cp_log("info thread select error!: state(%d)", state);
+                cp_log_ui(MSG_ERROR_STATE, "info thread select error!: state(%d)", state);
                 break;
 
             default :
                 if(FD_ISSET(fd, &tmpfds)) {
                     if((rlen = read(fd, buf, MESSAGE_BUFFER_SIZE)) < 0) {
-                        cp_log("info read error: %d", rlen);
+                        cp_log_ui(MSG_ERROR_STATE, "info read error: %d", rlen);
                         break;
                     }
 
@@ -939,12 +941,12 @@ int cp_option_check(char *option, option_type type, bool arg)
     return 0;
 }
 
-void cp_log_ui(char *log, ...)
+void cp_log_ui(int type, char *log, ...)
 {
     cp_va_format(log);
 
     cp_log(vbuffer);
-    print_error(vbuffer);
+    cp_log_print(type, vbuffer);
     
     free(vbuffer);
 }
