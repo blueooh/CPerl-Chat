@@ -19,7 +19,12 @@ int cp_log(char *buf, ...)
 
     cp_va_format(buf);
     log_size = cp_get_log_time(log_buf, sizeof(log_buf));
-    log_size += snprintf(log_buf + log_size, vaa_size, "%s", vbuffer);
+
+    if(vbuffer[vaa_size] == '\n') {
+        log_size += snprintf(log_buf + log_size, vaa_size, "%s", vbuffer);
+    } else {
+        log_size += snprintf(log_buf + log_size, vaa_size + 1, "%s\n", vbuffer);
+    }
 
     write(log_fd, log_buf, log_size);
 

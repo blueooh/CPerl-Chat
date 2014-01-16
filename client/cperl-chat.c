@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     clear();
     refresh();
 
-    cp_log("start cperl-chat...\n");
+    cp_log("start cperl-chat...");
 
     cp_create_win();
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
             } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
                 // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
                 if(usr_state == USER_LOGIN_STATE) {
-                    cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)\n", srvname);
+                    cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)", srvname);
                     cw_manage[CP_SHOW_WIN].update_handler();
                     continue;
                 }
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
                 clear_usr_list();
                 cw_manage[CP_ULIST_WIN].update_handler();
                 usr_state = USER_LOGOUT_STATE;
-                cp_log_ui(MSG_ERROR_STATE, "disconnected: server(%s)\n", srvname);
+                cp_log_ui(MSG_ERROR_STATE, "disconnected: server(%s)", srvname);
 
             } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
                 char tfile[FILE_NAME_MAX];
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
                 if(!access(tfile, R_OK | X_OK)) {
                     sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
                 } else {
-                    cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!\n", tfile);
+                    cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!", tfile);
                 }
 
             } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
@@ -187,7 +187,7 @@ int connect_server()
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(sock < 0) {
-        cp_log_ui(MSG_ERROR_STATE,  "error: sock(%d)\n", sock);
+        cp_log_ui(MSG_ERROR_STATE,  "error: sock(%d)", sock);
         return -1;
     }
 
@@ -208,7 +208,7 @@ int connect_server()
     srv_addr.sin_addr.s_addr = inet_addr(resolved_host);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), srvname(%s), port(%s)\n", 
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), srvname(%s), port(%s)", 
                 strerror(errno), errno, srvname, SERVER_PORT);
         close(sock);
         return -1;
@@ -275,7 +275,7 @@ void *rcv_thread(void *data) {
                     cw_manage[CP_ULIST_WIN].update_handler();
                     wrefresh(cw_manage[CP_CHAT_WIN].win);
                     usr_state = USER_LOGIN_STATE;
-                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection complete!: server(%s)\n", srvname);
+                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection complete!: server(%s)", srvname);
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:

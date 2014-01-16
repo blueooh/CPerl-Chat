@@ -23,7 +23,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    cp_log("start cperl-chat...\n");
+    cp_log("start cperl-chat...");
 
     init_usr_list();
 
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     // epoll_create를 이용해서 epoll 지정자를 생성한다. 
     if ((efd = epoll_create(100)) < 0)
     {
-        cp_log("epoll_create error: %d\n", efd);
+        cp_log("epoll_create error: %d", efd);
         return 1;
     }
 
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     sfd = socket(AF_INET, SOCK_STREAM, 0);  
     if (sfd == -1)
     {
-        cp_log("listen socket error : %d\n", sfd);
+        cp_log("listen socket error : %d", sfd);
         close(sfd);
         return 1;
     }
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     if (bind (sfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
     {
         close(sfd);
-        cp_log("bind error\n");
+        cp_log("bind error");
         return 1;
     }
     listen(sfd, 5);
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
         n = epoll_wait(efd, events, EPOLL_SIZE, -1);
         if (n == -1 )
         {
-            cp_log("epoll wait error: %d\n", n);
+            cp_log("epoll wait error: %d", n);
         }
         // 만약 이벤트가 발생했다면 발생한 이벤트의 수만큼
         // 돌면서 데이터를 읽어 옵니다. 
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
                 strcpy(ms.message, msg);
                 ms.message[strlen(msg)] = '\0';
                 write(cfd, (char *)&ms, sizeof(msgst));
-                cp_log("new connect ... : sock(%d)\n", cfd);
+                cp_log("new connect ... : sock(%d)", cfd);
             }
             // 연결소켓에서 이벤트가 발생했다면
             // 데이터를 읽는다.
@@ -107,10 +107,10 @@ int main(int argc, char **argv)
                 if (readn <= 0)
                 {
                     if(!readn) {
-                        cp_log("closed socket connection: readn(%d), errno(%d), strerror(%s)\n", 
+                        cp_log("closed socket connection: readn(%d), errno(%d), strerror(%s)", 
                                 readn, errno, strerror(errno));
                     } else {
-                        cp_log("socket error: readn(%d), errno(%d), strerror(%s)\n", 
+                        cp_log("socket error: readn(%d), errno(%d), strerror(%s)", 
                                 readn, errno, strerror(errno));
                     }
                     // 끊어진 소켓, 아이디를 구한다.
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
                                 found = 1;
                                 strcpy(user_data.id, node->data.id);
                                 user_data.sock = node->data.sock;
-                                cp_log("found close user: id(%s), sock(%d), hash(%d)\n", user_data.id, user_data.sock, hash);
+                                cp_log("found close user: id(%s), sock(%d), hash(%d)", user_data.id, user_data.sock, hash);
                                 break;
                             }
                         }
@@ -139,10 +139,10 @@ int main(int argc, char **argv)
                                 write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
                             }
                         }
-                        cp_log("Log-out user(%s)\n", user_data.id);
+                        cp_log("Log-out user(%s)", user_data.id);
 
                     } else {
-                        cp_log("cannot fond user, anyway force close: sock(%d)\n", events[i].data.fd);
+                        cp_log("cannot fond user, anyway force close: sock(%d)", events[i].data.fd);
                         close(events[i].data.fd);
                     }
                 }
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
                             } else {
                                 int idx = 0;
                                 // 사용자를 리스트에 추가
-                                cp_log("log-in user: id(%s), sock(%d)\n", rcv_ms.id, user_data.sock);
+                                cp_log("log-in user: id(%s), sock(%d)", rcv_ms.id, user_data.sock);
                                 insert_usr_list(user_data);
 
                                 // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
                                     }
                                 }
                                 if(write(user_data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-                                    cp_log("send user list socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                    cp_log("send user list socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
                                             user_data.id, readn, errno, strerror(errno));
                                 }
 
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
                                 for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                     list_for_each_entry(node, &usr_list[hash], list) {
                                         if(write(node->data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-                                            cp_log("send new user to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                            cp_log("send new user to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
                                                     node->data.id, readn, errno, strerror(errno));
                                         }
                                     }
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
                                     if(write(node->data.sock, (char *)&rcv_ms, sizeof(msgst)) < 0) {
-                                        cp_log("send message to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                        cp_log("send message to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
                                                 node->data.id, readn, errno, strerror(errno));
                                     }
                                 }
@@ -241,7 +241,7 @@ void insert_usr_list(ud data)
     strcpy(node->data.id, data.id);
     hash = hash_func(data.id);
     list_add(&node->list, &usr_list[hash]);
-    cp_log("insert user list: id(%s), sock(%d), hash(%d)\n", data.id, data.sock, hash);
+    cp_log("insert user list: id(%s), sock(%d), hash(%d)", data.id, data.sock, hash);
 }
 
 void delete_usr_list(ud data)
@@ -254,7 +254,7 @@ void delete_usr_list(ud data)
         if(!strcmp(data.id, node->data.id)) {
             list_del(&node->list);
             free(node);
-            cp_log("delete user list: id(%s), sock(%d), hash(%d)\n", data.id, data.sock, hash);
+            cp_log("delete user list: id(%s), sock(%d), hash(%d)", data.id, data.sock, hash);
         }
     }
 }
