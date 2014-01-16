@@ -150,7 +150,9 @@ int main(int argc, char *argv[])
                 memcpy(ms.id, id, strlen(id));
                 ms.id[strlen(id)] = '\0';
                 strcpy(ms.message, str);
-                write(sock, (char *)&ms, sizeof(msgst));
+                if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
+                    cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
+                }
             }
         }
     }
@@ -184,8 +186,8 @@ int connect_server()
     msgst ms;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    if(!sock) {
-        cp_log_ui(MSG_ERROR_STATE,  "socket error: sock(%d)\n", sock);
+    if(sock < 0) {
+        cp_log_ui(MSG_ERROR_STATE,  "error: sock(%d)\n", sock);
         return -1;
     }
 
@@ -206,7 +208,8 @@ int connect_server()
     srv_addr.sin_addr.s_addr = inet_addr(resolved_host);
     srv_addr.sin_port = htons(atoi(SERVER_PORT));
     if(connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr)) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "connect error: srvname(%s), port(%s)\n", srvname, SERVER_PORT);
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), srvname(%s), port(%s)\n", 
+                strerror(errno), errno, srvname, SERVER_PORT);
         close(sock);
         return -1;
     }
@@ -224,8 +227,7 @@ int connect_server()
     ms.state = MSG_NEWCONNECT_STATE;
     strcpy(ms.id, id);
     if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "send new connect state error");
-        close(sock);
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
     }
 
     return 0;
@@ -239,15 +241,12 @@ void *rcv_thread(void *data) {
 
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
-        if(read_len == 0) {
-            cp_log_ui(MSG_ERROR_STATE, "connection closed with server: %s", srvname);
-            close(sock);
-            usr_state = USER_LOGOUT_STATE; 
-            clear_usr_list();
-            cw_manage[CP_ULIST_WIN].update_handler();
-            pthread_cancel(rcv_pthread);
-        } else if(read_len < 0) {
-            cp_log_ui(MSG_ERROR_STATE, "%s:errno(%d), read_len(%d)", strerror(errno), read_len, errno);
+        if(read_len <= 0) {
+            if(!read_len) {
+                cp_log_ui(MSG_ERROR_STATE, "connection closed with server: %s", srvname);
+            } else {
+                cp_log_ui(MSG_ERROR_STATE, "%s:errno(%d), read_len(%d)", strerror(errno), errno, read_len);
+            }
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
             clear_usr_list();

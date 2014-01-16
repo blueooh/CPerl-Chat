@@ -106,7 +106,13 @@ int main(int argc, char **argv)
                 readn = read(events[i].data.fd, (char *)&rcv_ms, 1024);
                 if (readn <= 0)
                 {
-                    cp_log("readn <= 0 : readn value(%d)\n", readn);
+                    if(!readn) {
+                        cp_log("closed socket connection: readn(%d), errno(%d), strerror(%s)\n", 
+                                readn, errno, strerror(errno));
+                    } else {
+                        cp_log("socket error: readn(%d), errno(%d), strerror(%s)\n", 
+                                readn, errno, strerror(errno));
+                    }
                     // 끊어진 소켓, 아이디를 구한다.
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                         list_for_each_entry(node, &usr_list[hash], list) {
@@ -133,12 +139,11 @@ int main(int argc, char **argv)
                                 write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
                             }
                         }
-
                         cp_log("Log-out user(%s)\n", user_data.id);
+
                     } else {
-                        cp_log("cannot fond user: sock(%d)\n", events[i].data.fd);
+                        cp_log("cannot fond user, anyway force close: sock(%d)\n", events[i].data.fd);
                         close(events[i].data.fd);
-                        cp_log("anyway force close...\n");
                     }
                 }
                 else
@@ -168,14 +173,20 @@ int main(int argc, char **argv)
                                         idx += sprintf(snd_ms.message + idx, "%s%s", node->data.id, USER_DELIM);
                                     }
                                 }
-                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
+                                if(write(user_data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
+                                    cp_log("send user list socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                            user_data.id, readn, errno, strerror(errno));
+                                }
 
                                 // 접속자들에게 새로운 사용자의 접속을 알린다.
                                 snd_ms.state = MSG_NEWUSER_STATE;
                                 strcpy(snd_ms.id, user_data.id);
                                 for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                     list_for_each_entry(node, &usr_list[hash], list) {
-                                        write(node->data.sock, (char *)&snd_ms, sizeof(msgst));
+                                        if(write(node->data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
+                                            cp_log("send new user to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                                    node->data.id, readn, errno, strerror(errno));
+                                        }
                                     }
                                 }
                             }
@@ -184,7 +195,10 @@ int main(int argc, char **argv)
                             // 모든 사용자에게 서버가 받은 메시지를 전달
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
-                                    write(node->data.sock, (char *)&rcv_ms, sizeof(msgst));
+                                    if(write(node->data.sock, (char *)&rcv_ms, sizeof(msgst)) < 0) {
+                                        cp_log("send message to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)\n", 
+                                                node->data.id, readn, errno, strerror(errno));
+                                    }
                                 }
                             }
                             break;

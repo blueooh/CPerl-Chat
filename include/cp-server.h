@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 
 #ifdef TEST
 #define SERVER_PORT "8889"
