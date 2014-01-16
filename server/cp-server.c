@@ -264,7 +264,7 @@ void delete_usr_list(ud data)
 
 struct user_list_node *exist_usr_list(ud data)
 {
-    struct user_list_node *node;
+    struct user_list_node *node = NULL;
     unsigned int hash;
 
     hash = hash_func(data.id);
@@ -274,7 +274,7 @@ struct user_list_node *exist_usr_list(ud data)
         }
     }
 
-    return node;
+    return NULL;
 }
 
 int new_connect_proc(ud data)
