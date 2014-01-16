@@ -243,9 +243,13 @@ void *rcv_thread(void *data) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
             if(!read_len) {
-                cp_log_ui(MSG_ERROR_STATE, "connection closed with server: %s", srvname);
+                cp_log_ui(MSG_ERROR_STATE, 
+                        "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                        srvname, read_len, errno, strerror(errno));
             } else {
-                cp_log_ui(MSG_ERROR_STATE, "%s:errno(%d), read_len(%d)", strerror(errno), errno, read_len);
+                cp_log_ui(MSG_ERROR_STATE, 
+                        "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                        srvname, read_len, errno, strerror(errno));
             }
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
@@ -271,7 +275,7 @@ void *rcv_thread(void *data) {
                     cw_manage[CP_ULIST_WIN].update_handler();
                     wrefresh(cw_manage[CP_CHAT_WIN].win);
                     usr_state = USER_LOGIN_STATE;
-                    cp_log_ui(MSG_ALAM_STATE, "Connection complete!: server(%s)\n", srvname);
+                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection complete!: server(%s)\n", srvname);
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:

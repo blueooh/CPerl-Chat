@@ -154,6 +154,7 @@ int main(int argc, char **argv)
                             strcpy(user_data.id, rcv_ms.id);
 
                             if(exist_usr_list(user_data)) {
+                                cp_log("user exists, force to close...: user-id(%s)", user_data.id);
                                 snd_ms.state = MSG_ALAM_STATE;
                                 strcpy(snd_ms.message, "ID Exists already, re-connect to server after change your ID!");
                                 write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
