@@ -38,7 +38,8 @@ struct user_list_node {
 
 unsigned int hash_func(char *s);
 void init_usr_list();
-void insert_usr_list(ud data);
+struct user_list_node *insert_usr_list(ud data);
 void delete_usr_list(ud data);
-int exist_usr_list(ud data);
+struct user_list_node *exist_usr_list(ud data);
+int new_connect_proc(ud data);
 #endif

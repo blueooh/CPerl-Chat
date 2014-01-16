@@ -148,24 +148,17 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    switch(rcv_ms.state) {
-                        case MSG_NEWCONNECT_STATE:
-                            user_data.sock = events[i].data.fd;
-                            strcpy(user_data.id, rcv_ms.id);
+                    int idx = 0;
 
-                            if(exist_usr_list(user_data)) {
-                                cp_log("user exists, force to close...: user-id(%s)", user_data.id);
-                                snd_ms.state = MSG_ALAM_STATE;
-                                strcpy(snd_ms.message, "ID Exists already, re-connect to server after change your ID!");
-                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
-                                epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
-                                close(user_data.sock);
-                                break;
-                            } else {
-                                int idx = 0;
-                                // 사용자를 리스트에 추가
-                                cp_log("log-in user: id(%s), sock(%d)", rcv_ms.id, user_data.sock);
-                                insert_usr_list(user_data);
+                    user_data.sock = events[i].data.fd;
+                    strcpy(user_data.id, rcv_ms.id);
+
+                    switch(rcv_ms.state) {
+                        case MSG_RECONNECT_STATE:
+                            if(node = exist_usr_list(user_data)) {
+                                cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", user_data.id, user_data.sock);
+                                epoll_ctl(efd, EPOLL_CTL_DEL, node->data.sock, events);
+                                close(node->data.sock);
 
                                 // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
                                 snd_ms.state = MSG_USERLIST_STATE;
@@ -175,21 +168,31 @@ int main(int argc, char **argv)
                                     }
                                 }
                                 if(write(user_data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-                                    cp_log("send user list socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
-                                            user_data.id, readn, errno, strerror(errno));
+                                    cp_log("send user list socket error: user(%s), errno(%d), strerror(%s)", 
+                                            user_data.id, errno, strerror(errno));
+                                    return 0;
                                 }
 
-                                // 접속자들에게 새로운 사용자의 접속을 알린다.
-                                snd_ms.state = MSG_NEWUSER_STATE;
-                                strcpy(snd_ms.id, user_data.id);
-                                for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-                                    list_for_each_entry(node, &usr_list[hash], list) {
-                                        if(write(node->data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-                                            cp_log("send new user to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
-                                                    node->data.id, readn, errno, strerror(errno));
-                                        }
-                                    }
-                                }
+                                node->data.sock = user_data.sock;
+                            } else {
+                                cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", user_data.id, user_data.sock);
+                                new_connect_proc(user_data);
+                            }
+                            break;
+
+                        case MSG_NEWCONNECT_STATE:
+                            if(exist_usr_list(user_data)) {
+                                cp_log("new connect user id exists, force to close...: user-id(%s)", user_data.id);
+                                snd_ms.state = MSG_ALAM_STATE;
+                                strcpy(snd_ms.message, "ID Exists already, re-connect to server after change your ID!");
+                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
+                                epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
+                                close(user_data.sock);
+                                break;
+                            } else {
+                                // 사용자를 리스트에 추가
+                                cp_log("log-in user: id(%s), sock(%d)", rcv_ms.id, user_data.sock);
+                                new_connect_proc(user_data);
                             }
                             break;
                         case MSG_DATA_STATE:
@@ -231,7 +234,7 @@ void init_usr_list()
     }
 }
 
-void insert_usr_list(ud data)
+struct user_list_node *insert_usr_list(ud data)
 {
     struct user_list_node *node;
     unsigned int hash;
@@ -259,7 +262,7 @@ void delete_usr_list(ud data)
     }
 }
 
-int exist_usr_list(ud data)
+struct user_list_node *exist_usr_list(ud data)
 {
     struct user_list_node *node;
     unsigned int hash;
@@ -267,9 +270,46 @@ int exist_usr_list(ud data)
     hash = hash_func(data.id);
     list_for_each_entry(node, &usr_list[hash], list) {
         if(!strcmp(data.id, node->data.id)) {
-            return 1;
+            return node;
         }
     }
 
-    return 0;
+    return node;
+}
+
+int new_connect_proc(ud data)
+{
+    struct user_list_node *node;
+    int hash, idx = 0;
+    msgst snd_ms;
+
+    insert_usr_list(data);
+
+    // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
+    snd_ms.state = MSG_USERLIST_STATE;
+    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+        list_for_each_entry(node, &usr_list[hash], list) {
+            idx += sprintf(snd_ms.message + idx, "%s%s", node->data.id, USER_DELIM);
+        }
+    }
+    if(write(data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
+        cp_log("send user list socket error: user(%s), errno(%d), strerror(%s)", 
+                data.id, errno, strerror(errno));
+        return 0;
+    }
+
+    // 접속자들에게 새로운 사용자의 접속을 알린다.
+    snd_ms.state = MSG_NEWUSER_STATE;
+    strcpy(snd_ms.id, data.id);
+    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+        list_for_each_entry(node, &usr_list[hash], list) {
+            if(write(node->data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
+                cp_log("send new user to all socket error: user(%s), errno(%d), strerror(%s)", 
+                        node->data.id, errno, strerror(errno));
+                return 0;
+            }
+        }
+    }
+
+    return 1;
 }

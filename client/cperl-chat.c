@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    connect_server();
+    cp_connect_server(MSG_NEWCONNECT_STATE);
 
     while(1) {
         msgst ms;
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
                 cw_manage[CP_ULIST_WIN].update_handler();
 
                 // 접속 시도
-                if(connect_server() < 0) {
+                if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
                     continue;
                 }
 
@@ -177,7 +177,7 @@ void cp_log_print(int type, const char* err_msg, ...)
     free(vbuffer);
 }
 
-int connect_server()
+int cp_connect_server(int try_type)
 {
     struct sockaddr_in srv_addr;
     struct hostent *entry;
@@ -215,16 +215,18 @@ int connect_server()
     }
 
     // 메시지를 받는 역할을 하는 쓰레드 생성
-    thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
-    if(thr_id < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "rcv pthread_create error: %d", thr_id);
-        close(sock);
-        return -1;
+    if(try_type != MSG_RECONNECT_STATE) {
+        thr_id = pthread_create(&rcv_pthread, NULL, rcv_thread, (void *)&sock);
+        if(thr_id < 0) {
+            cp_log_ui(MSG_ERROR_STATE, "rcv pthread_create error: %d", thr_id);
+            close(sock);
+            return -1;
+        }
     }
 
     // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
     // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
-    ms.state = MSG_NEWCONNECT_STATE;
+    ms.state = try_type;
     strcpy(ms.id, id);
     if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
         cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
@@ -242,20 +244,36 @@ void *rcv_thread(void *data) {
     while(1) {
         read_len = read(sock, (char *)&ms, sizeof(msgst));
         if(read_len <= 0) {
-            if(!read_len) {
-                cp_log_ui(MSG_ERROR_STATE, 
-                        "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
-                        srvname, read_len, errno, strerror(errno));
-            } else {
-                cp_log_ui(MSG_ERROR_STATE, 
-                        "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
-                        srvname, read_len, errno, strerror(errno));
+            if(read_len) {
+                switch(errno) {
+                    case ECONNRESET:
+                        cp_log_ui(MSG_ERROR_STATE, "May be splited network..., try re-connect!");
+                        close(sock);
+                        clear_usr_list();
+                        cw_manage[CP_ULIST_WIN].update_handler();
+                        if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
+                            cp_log_ui(MSG_ERROR_STATE, "re-connect fail...");
+                            break;
+                        }
+                        continue;
+
+                    default:
+                        cp_log_ui(MSG_ERROR_STATE, 
+                                "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                                srvname, read_len, errno, strerror(errno));
+                        break;
+                }
             }
+
+            cp_log_ui(MSG_ERROR_STATE, 
+                    "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                    srvname, read_len, errno, strerror(errno));
             close(sock);
             usr_state = USER_LOGOUT_STATE; 
             clear_usr_list();
             cw_manage[CP_ULIST_WIN].update_handler();
             pthread_cancel(rcv_pthread);
+
         } else {
             // 서버로 부터 온 메시지의 종류를 구별한다.
             switch(ms.state) {
@@ -275,7 +293,7 @@ void *rcv_thread(void *data) {
                     cw_manage[CP_ULIST_WIN].update_handler();
                     wrefresh(cw_manage[CP_CHAT_WIN].win);
                     usr_state = USER_LOGIN_STATE;
-                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection complete!: server(%s)", srvname);
+                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
                     continue;
                     // 서버로 부터 새로운 사용자에 대한 알림.
                 case MSG_NEWUSER_STATE:
@@ -581,6 +599,7 @@ void insert_usr_list(char *id)
     struct usr_list_node *node;
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
+
     strcpy(node->id, id);
 
     pthread_mutex_lock(&usr_list_lock);
@@ -960,3 +979,5 @@ void cp_log_ui(int type, char *log, ...)
     
     free(vbuffer);
 }
+
+

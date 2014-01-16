@@ -142,7 +142,7 @@ void destroy_window(WINDOW *win);
 void *rcv_thread(void *data);
 void *info_win_thread(void *data);
 void *local_info_win_thread(void *data);
-int connect_server();
+int cp_connect_server(int try_type);
 void set_env();
 void current_time();
 void update_win_ui();
