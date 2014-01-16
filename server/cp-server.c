@@ -107,11 +107,11 @@ int main(int argc, char **argv)
                 if (readn <= 0)
                 {
                     if(!readn) {
-                        cp_log("closed socket connection: readn(%d), errno(%d), strerror(%s)", 
-                                readn, errno, strerror(errno));
+                        cp_log("closed socket connection: sock(%d), readn(%d), errno(%d), strerror(%s)", 
+                                events[i].data.fd, readn, errno, strerror(errno));
                     } else {
-                        cp_log("socket error: readn(%d), errno(%d), strerror(%s)", 
-                                readn, errno, strerror(errno));
+                        cp_log("socket error: sock(%d), readn(%d), errno(%d), strerror(%s)", 
+                                events[i].data.fd, readn, errno, strerror(errno));
                     }
                     // 끊어진 소켓, 아이디를 구한다.
                     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
@@ -200,8 +200,8 @@ int main(int argc, char **argv)
                             for(hash = 0; hash < USER_HASH_SIZE; hash++) {
                                 list_for_each_entry(node, &usr_list[hash], list) {
                                     if(write(node->data.sock, (char *)&rcv_ms, sizeof(msgst)) < 0) {
-                                        cp_log("send message to all socket error: user(%s), readn(%d), errno(%d), strerror(%s)", 
-                                                node->data.id, readn, errno, strerror(errno));
+                                        cp_log("send message to all socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
+                                                node->data.id, node->data.sock, errno, strerror(errno));
                                     }
                                 }
                             }
@@ -293,8 +293,8 @@ int new_connect_proc(ud data)
         }
     }
     if(write(data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-        cp_log("send user list socket error: user(%s), errno(%d), strerror(%s)", 
-                data.id, errno, strerror(errno));
+        cp_log("send user list socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
+                data.id, data.sock, errno, strerror(errno));
         return 0;
     }
 
@@ -304,8 +304,8 @@ int new_connect_proc(ud data)
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
             if(write(node->data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
-                cp_log("send new user to all socket error: user(%s), errno(%d), strerror(%s)", 
-                        node->data.id, errno, strerror(errno));
+                cp_log("send new user to all socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
+                        node->data.id, node->data.sock, errno, strerror(errno));
                 return 0;
             }
         }
