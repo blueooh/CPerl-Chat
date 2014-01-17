@@ -42,4 +42,5 @@ struct user_list_node *insert_usr_list(ud data);
 void delete_usr_list(ud data);
 struct user_list_node *exist_usr_list(ud data);
 int new_connect_proc(ud data);
+int get_all_user_list(char *buff, int size);
 #endif

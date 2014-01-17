@@ -247,7 +247,7 @@ void *rcv_thread(void *data) {
             if(read_len) {
                 switch(errno) {
                     case ECONNRESET:
-                        cp_log_ui(MSG_ERROR_STATE, "May be splited network..., try re-connect!");
+                        cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
                         close(sock);
                         clear_usr_list();
                         cw_manage[CP_ULIST_WIN].update_handler();

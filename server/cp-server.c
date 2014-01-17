@@ -148,8 +148,6 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    int idx = 0;
-
                     user_data.sock = events[i].data.fd;
                     strcpy(user_data.id, rcv_ms.id);
 
@@ -159,21 +157,16 @@ int main(int argc, char **argv)
                                 cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", user_data.id, user_data.sock);
                                 epoll_ctl(efd, EPOLL_CTL_DEL, node->data.sock, events);
                                 close(node->data.sock);
+                                node->data.sock = user_data.sock;
+                                cp_log("user socket changed: user-id(%s), sock(%d)", node->data.id, node->data.sock);
 
-                                // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
                                 snd_ms.state = MSG_USERLIST_STATE;
-                                for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-                                    list_for_each_entry(node, &usr_list[hash], list) {
-                                        idx += sprintf(snd_ms.message + idx, "%s%s", node->data.id, USER_DELIM);
-                                    }
-                                }
+                                get_all_user_list(snd_ms.message, sizeof(msgst));
                                 if(write(user_data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
                                     cp_log("send user list socket error: user(%s), errno(%d), strerror(%s)", 
                                             user_data.id, errno, strerror(errno));
                                     return 0;
                                 }
-
-                                node->data.sock = user_data.sock;
                             } else {
                                 cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", user_data.id, user_data.sock);
                                 new_connect_proc(user_data);
@@ -185,7 +178,10 @@ int main(int argc, char **argv)
                                 cp_log("new connect user id exists, force to close...: user-id(%s)", user_data.id);
                                 snd_ms.state = MSG_ALAM_STATE;
                                 strcpy(snd_ms.message, "ID Exists already, re-connect to server after change your ID!");
-                                write(user_data.sock, (char *)&snd_ms, sizeof(msgst));
+                                if(write(user_data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
+                                    cp_log("send user exist alarm socket error: user(%s), errno(%d), strerror(%s)", 
+                                            user_data.id, errno, strerror(errno));
+                                }
                                 epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
                                 close(user_data.sock);
                                 break;
@@ -285,13 +281,8 @@ int new_connect_proc(ud data)
 
     insert_usr_list(data);
 
-    // 접속한 사용자에게 접속된 모든 사용자의 목록을 전송한다.(ex. usr1:usr2:usr3:...:)
     snd_ms.state = MSG_USERLIST_STATE;
-    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-        list_for_each_entry(node, &usr_list[hash], list) {
-            idx += sprintf(snd_ms.message + idx, "%s%s", node->data.id, USER_DELIM);
-        }
-    }
+    get_all_user_list(snd_ms.message, sizeof(msgst));
     if(write(data.sock, (char *)&snd_ms, sizeof(msgst)) < 0) {
         cp_log("send user list socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
                 data.id, data.sock, errno, strerror(errno));
@@ -312,4 +303,18 @@ int new_connect_proc(ud data)
     }
 
     return 1;
+}
+
+int get_all_user_list(char *buff, int size)
+{
+    int hash, idx = 0;
+    struct user_list_node *node;
+
+    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
+        list_for_each_entry(node, &usr_list[hash], list) {
+            idx += snprintf(buff + idx, size - idx, "%s%s", node->data.id, USER_DELIM);
+        }
+    }
+
+    return idx;
 }
