@@ -203,6 +203,8 @@ int main(int argc, char **argv)
                                 }
                             }
                             break;
+                        case MSG_AVAILTEST_STATE:
+                            break;
                         default:
                             break;
                     }
