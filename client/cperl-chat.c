@@ -185,6 +185,11 @@ int cp_connect_server(int try_type)
     int thr_id;
     msgst ms;
 
+    if(try_type == MSG_RECONNECT_STATE) {
+        if(sock)
+            close(sock);
+    }
+
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(sock < 0) {
         cp_log_ui(MSG_ERROR_STATE,  "error: sock(%d)", sock);
@@ -199,6 +204,7 @@ int cp_connect_server(int try_type)
     entry = gethostbyname(srvname);
     if(!entry) {
         cp_log_ui(MSG_ERROR_STATE, "failed host lookup: srv(%s), check your server name!", srvname);
+        return -1;
     } else {
         resolved_host = inet_ntoa((struct in_addr) *((struct in_addr *) entry->h_addr_list[0]));
     }
@@ -236,85 +242,111 @@ int cp_connect_server(int try_type)
 }
 
 void *rcv_thread(void *data) {
-    int read_len;
+    int read_len, state, max_fd;
     msgst ms;
     char message_buf[MESSAGE_BUFFER_SIZE];
     char *usr_id, *pbuf;
+    fd_set readfds, tmpfds;
+
+    FD_ZERO(&readfds);
+    FD_SET(sock, &readfds);
+    max_fd = sock + 1;
 
     while(1) {
-        read_len = read(sock, (char *)&ms, sizeof(msgst));
-        if(read_len <= 0) {
-            if(read_len) {
-                switch(errno) {
-                    case ECONNRESET:
-                        cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
+        struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+
+        tmpfds = readfds;
+        state = select(max_fd, &tmpfds, 0, 0, &timeout);
+        switch(state) {
+            case -1:
+                cp_log_ui(MSG_ERROR_STATE, "rcv thread select error!: state(%d)", state);
+                break;
+
+            case 0:
+                ms.state = MSG_AVAILTEST_STATE;
+                if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
+                    cp_log_ui(MSG_ERROR_STATE, "rcv thread timeout..., write test error: %s(%d)", strerror(errno), errno);
+                }
+                break;
+
+            default:
+                if(FD_ISSET(sock, &tmpfds)) {
+                    read_len = read(sock, (char *)&ms, sizeof(msgst));
+                    if(read_len <= 0) {
+                        if(read_len) {
+                            switch(errno) {
+                                case ECONNRESET:
+                                    cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
+                                    clear_usr_list();
+                                    cw_manage[CP_ULIST_WIN].update_handler();
+                                    if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
+                                        cp_log_ui(MSG_ERROR_STATE, "re-connect fail...");
+                                        break;
+                                    }
+                                    continue;
+
+                                default:
+                                    cp_log_ui(MSG_ERROR_STATE, 
+                                            "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                                            srvname, read_len, errno, strerror(errno));
+                                    break;
+                            }
+                        }
+
+                        cp_log_ui(MSG_ERROR_STATE, 
+                                "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                                srvname, read_len, errno, strerror(errno));
                         close(sock);
+                        usr_state = USER_LOGOUT_STATE; 
                         clear_usr_list();
                         cw_manage[CP_ULIST_WIN].update_handler();
-                        if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
-                            cp_log_ui(MSG_ERROR_STATE, "re-connect fail...");
-                            break;
-                        }
-                        continue;
+                        pthread_cancel(rcv_pthread);
 
-                    default:
-                        cp_log_ui(MSG_ERROR_STATE, 
-                                "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
-                                srvname, read_len, errno, strerror(errno));
-                        break;
-                }
-            }
-
-            cp_log_ui(MSG_ERROR_STATE, 
-                    "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
-                    srvname, read_len, errno, strerror(errno));
-            close(sock);
-            usr_state = USER_LOGOUT_STATE; 
-            clear_usr_list();
-            cw_manage[CP_ULIST_WIN].update_handler();
-            pthread_cancel(rcv_pthread);
-
-        } else {
-            // 서버로 부터 온 메시지의 종류를 구별한다.
-            switch(ms.state) {
-                    // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
-                case MSG_ALAM_STATE:
-                    // 서버로 부터 사용자들의 메시지를 전달 받을 때
-                case MSG_DATA_STATE:
-                    strcpy(message_buf, ms.message);
-                    break;
-                    // 서버로 부터 전체 사용자 목록을 받을 때
-                case MSG_USERLIST_STATE:
-                    pbuf = ms.message;
-                    while(usr_id = strtok(pbuf, USER_DELIM)) {
-                        insert_usr_list(usr_id);
-                        pbuf = NULL;
-                    }
-                    cw_manage[CP_ULIST_WIN].update_handler();
-                    wrefresh(cw_manage[CP_CHAT_WIN].win);
-                    usr_state = USER_LOGIN_STATE;
-                    cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
-                    continue;
-                    // 서버로 부터 새로운 사용자에 대한 알림.
-                case MSG_NEWUSER_STATE:
-                    if(strcmp(id, ms.id)) {
-                        insert_usr_list(ms.id);
-                        cw_manage[CP_ULIST_WIN].update_handler();
-                        break;
                     } else {
-                        continue;
-                    }
-                    // 서버로 부터 연결 해제된 사용자에 대한 알림.
-                case MSG_DELUSER_STATE:
-                    delete_usr_list(ms.id);
-                    cw_manage[CP_ULIST_WIN].update_handler();
-                    break;
-            }
+                        // 서버로 부터 온 메시지의 종류를 구별한다.
+                        switch(ms.state) {
+                            // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
+                            case MSG_ALAM_STATE:
+                                // 서버로 부터 사용자들의 메시지를 전달 받을 때
+                            case MSG_DATA_STATE:
+                                strcpy(message_buf, ms.message);
+                                break;
+                                // 서버로 부터 전체 사용자 목록을 받을 때
+                            case MSG_USERLIST_STATE:
+                                pbuf = ms.message;
+                                while(usr_id = strtok(pbuf, USER_DELIM)) {
+                                    insert_usr_list(usr_id);
+                                    pbuf = NULL;
+                                }
+                                cw_manage[CP_ULIST_WIN].update_handler();
+                                wrefresh(cw_manage[CP_CHAT_WIN].win);
+                                usr_state = USER_LOGIN_STATE;
+                                cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
+                                continue;
+                                // 서버로 부터 새로운 사용자에 대한 알림.
+                            case MSG_NEWUSER_STATE:
+                                if(strcmp(id, ms.id)) {
+                                    insert_usr_list(ms.id);
+                                    cw_manage[CP_ULIST_WIN].update_handler();
+                                    break;
+                                } else {
+                                    continue;
+                                }
+                                // 서버로 부터 연결 해제된 사용자에 대한 알림.
+                            case MSG_DELUSER_STATE:
+                                delete_usr_list(ms.id);
+                                cw_manage[CP_ULIST_WIN].update_handler();
+                                break;
+                        }
 
-            // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-            insert_msg_list(ms.state, ms.id, message_buf);
-            cw_manage[CP_SHOW_WIN].update_handler();
-            wrefresh(cw_manage[CP_CHAT_WIN].win);
+                        // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
+                        insert_msg_list(ms.state, ms.id, message_buf);
+                        cw_manage[CP_SHOW_WIN].update_handler();
+                        wrefresh(cw_manage[CP_CHAT_WIN].win);
+                    }
+                }
+
+                break;
         }
     }
 }
@@ -326,7 +358,7 @@ WINDOW *create_window(struct win_ui ui)
     win = newwin(ui.lines, ui.cols, ui.start_y, ui.start_x);
     box(win, 0, 0);
     wborder(win, ui.left, ui.right, ui.top, ui.bottom, 
-                    ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
+            ui.ltop, ui.rtop, ui.lbottom, ui.rbottom);
     wrefresh(win);
 
     return win;
@@ -511,7 +543,7 @@ void clear_msg_list()
         list_del(&node->list);
         free(node);
         msg_count--;
-    pthread_mutex_unlock(&msg_list_lock);
+        pthread_mutex_unlock(&msg_list_lock);
     }
 }
 
@@ -671,19 +703,19 @@ void update_usr_win()
 
 void current_time()
 {
-  time_t timer;
-  struct tm *t;
-  int hh, mm, ss;
-  int len;
+    time_t timer;
+    struct tm *t;
+    int hh, mm, ss;
+    int len;
 
-  timer = time(NULL);
-  t = localtime(&timer);
-  hh = t->tm_hour;
-  mm = t->tm_min;
-  ss = t->tm_sec;
+    timer = time(NULL);
+    t = localtime(&timer);
+    hh = t->tm_hour;
+    mm = t->tm_min;
+    ss = t->tm_sec;
 
-  len = sprintf(time_buf, "[%02d:%02d:%02d]", hh, mm, ss);
-  time_buf[len] = '\0';
+    len = sprintf(time_buf, "[%02d:%02d:%02d]", hh, mm, ss);
+    time_buf[len] = '\0';
 }
 
 //info window에 정보를 출력.
@@ -976,7 +1008,7 @@ void cp_log_ui(int type, char *log, ...)
 
     cp_log(vbuffer);
     cp_log_print(type, vbuffer);
-    
+
     free(vbuffer);
 }
 

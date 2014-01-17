@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     ev.events = EPOLLIN;
     ev.data.fd = sfd;
     epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev);
+
     while(1)
     {
         // epoll이벤트 풀에서 이벤트가 발생했는지를 검사한다.

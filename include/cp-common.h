@@ -24,6 +24,7 @@ enum {
     MSG_USERLIST_STATE,
     MSG_DELUSER_STATE,
     MSG_ERROR_STATE,
+    MSG_AVAILTEST_STATE,
 };
 
 enum {
