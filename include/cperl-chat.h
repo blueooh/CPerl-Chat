@@ -123,10 +123,11 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...);
 void clear_msg_list();
 void update_show_win();
 
-void insert_usr_list(char *id);
+struct usr_list_node *insert_usr_list(char *id);
 void delete_usr_list(char *id);
 void clear_usr_list();
 void update_usr_win();
+struct usr_list_node *exist_usr_list(char *id);
 
 void update_chat_win();
 
@@ -150,4 +151,8 @@ void reg_update_win_func();
 void first_scr_ui();
 void cp_init_chat();
 void cp_create_win();
+void cp_logout();
+void cp_exit();
+void cp_rcv_proc(msgst *ms);
+void init_usr_list();
 #endif

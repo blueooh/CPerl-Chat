@@ -14,7 +14,6 @@ int main(int argc, char **argv)
     int n, i;
     int readn;
     struct epoll_event ev,*events;
-
     int efd;
 
     cp_init_log("/var/log/cperl-chatd.log");
@@ -212,16 +211,6 @@ int main(int argc, char **argv)
             }
         }
     }
-}
-
-unsigned int hash_func(char *s)
-{
-    unsigned hashval;
-
-    for (hashval = 0; *s != '\0'; s++)
-        hashval = *s + 31 * hashval;
-
-    return hashval % USER_HASH_SIZE;
 }
 
 void init_usr_list()

@@ -14,6 +14,7 @@
 #define FILE_PATH_MAX 4096
 #define TOTAL_MESSAGE_SIZE \
     (TIME_BUFFER_SIZE + ID_SIZE + MESSAGE_BUFFER_SIZE)
+#define USER_HASH_SIZE 20
 
 enum {
     MSG_ALAM_STATE = 0,
@@ -37,4 +38,16 @@ typedef struct message_st {
     char id[ID_SIZE];
     char message[MESSAGE_BUFFER_SIZE];
 }msgst;
+
+inline unsigned int hash_func(char *s)
+{
+    unsigned hashval;
+
+    for (hashval = 0; *s != '\0'; s++)
+        hashval = *s + 31 * hashval;
+
+    return hashval % USER_HASH_SIZE;
+}
+
+
 #endif

@@ -28,9 +28,9 @@ unsigned int msg_count;
 unsigned int usr_count;
 unsigned int info_count;
 
-LIST_HEAD(msg_list);
-LIST_HEAD(usr_list);
-LIST_HEAD(info_list);
+struct list_head msg_list;
+struct list_head info_list;
+struct list_head usr_list[USER_HASH_SIZE];
 
 int main(int argc, char *argv[])
 {
@@ -103,24 +103,13 @@ int main(int argc, char *argv[])
                     strcpy(srvname, argv_parse);
                 }
 
-                // 사용자 목록 창과 리스트에 남아있는 사용자 목록을 초기화 한다.
-                clear_usr_list();
-                cw_manage[CP_ULIST_WIN].update_handler();
-
                 // 접속 시도
                 if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
                     continue;
                 }
 
             } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
-                // 접속을 끊기 위해 메시지를 받는 쓰레드를 종료하고 읽기/쓰기 소켓을 닫는다.
-                pthread_cancel(rcv_pthread);
-                close(sock);
-                // 사용자 목록 초기화
-                clear_usr_list();
-                cw_manage[CP_ULIST_WIN].update_handler();
-                usr_state = USER_LOGOUT_STATE;
-                cp_log_ui(MSG_ERROR_STATE, "disconnected: server(%s)", srvname);
+                cp_logout();
 
             } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
                 char tfile[FILE_NAME_MAX];
@@ -157,12 +146,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    pthread_cancel(rcv_pthread);
-    pthread_cancel(info_win_pthread);
-    pthread_cancel(local_info_win_pthread);
-    close(sock);
-    unlink(INFO_PIPE_FILE);
-    endwin();
+    cp_exit();
 
     return 0;
 }
@@ -189,6 +173,9 @@ int cp_connect_server(int try_type)
         if(sock)
             close(sock);
     }
+    
+    clear_usr_list();
+    cw_manage[CP_ULIST_WIN].update_handler();
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if(sock < 0) {
@@ -236,6 +223,7 @@ int cp_connect_server(int try_type)
     strcpy(ms.id, id);
     if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
         cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
+        cp_logout();
     }
 
     return 0;
@@ -244,7 +232,6 @@ int cp_connect_server(int try_type)
 void *rcv_thread(void *data) {
     int read_len, state, max_fd;
     msgst ms;
-    char message_buf[MESSAGE_BUFFER_SIZE];
     char *usr_id, *pbuf;
     fd_set readfds, tmpfds;
 
@@ -253,7 +240,7 @@ void *rcv_thread(void *data) {
     max_fd = sock + 1;
 
     while(1) {
-        struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+        struct timeval timeout = { .tv_sec = 5, .tv_usec = 0 };
 
         tmpfds = readfds;
         state = select(max_fd, &tmpfds, 0, 0, &timeout);
@@ -265,84 +252,40 @@ void *rcv_thread(void *data) {
             case 0:
                 ms.state = MSG_AVAILTEST_STATE;
                 if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-                    cp_log_ui(MSG_ERROR_STATE, "rcv thread timeout..., write test error: %s(%d)", strerror(errno), errno);
+                    cp_log_ui(MSG_ERROR_STATE, "write test error: %s(%d)", strerror(errno), errno);
+                    cp_logout();
                 }
                 break;
 
             default:
                 if(FD_ISSET(sock, &tmpfds)) {
                     read_len = read(sock, (char *)&ms, sizeof(msgst));
-                    if(read_len <= 0) {
-                        if(read_len) {
-                            switch(errno) {
-                                case ECONNRESET:
-                                    cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
-                                    clear_usr_list();
-                                    cw_manage[CP_ULIST_WIN].update_handler();
-                                    if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
-                                        cp_log_ui(MSG_ERROR_STATE, "re-connect fail...");
-                                        break;
-                                    }
-                                    continue;
-
-                                default:
-                                    cp_log_ui(MSG_ERROR_STATE, 
-                                            "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
-                                            srvname, read_len, errno, strerror(errno));
-                                    break;
-                            }
-                        }
-
+                    if(read_len == 0) {
                         cp_log_ui(MSG_ERROR_STATE, 
                                 "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
                                 srvname, read_len, errno, strerror(errno));
-                        close(sock);
-                        usr_state = USER_LOGOUT_STATE; 
-                        clear_usr_list();
-                        cw_manage[CP_ULIST_WIN].update_handler();
-                        pthread_cancel(rcv_pthread);
+                        cp_logout();
 
-                    } else {
-                        // 서버로 부터 온 메시지의 종류를 구별한다.
-                        switch(ms.state) {
-                            // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
-                            case MSG_ALAM_STATE:
-                                // 서버로 부터 사용자들의 메시지를 전달 받을 때
-                            case MSG_DATA_STATE:
-                                strcpy(message_buf, ms.message);
-                                break;
-                                // 서버로 부터 전체 사용자 목록을 받을 때
-                            case MSG_USERLIST_STATE:
-                                pbuf = ms.message;
-                                while(usr_id = strtok(pbuf, USER_DELIM)) {
-                                    insert_usr_list(usr_id);
-                                    pbuf = NULL;
-                                }
-                                cw_manage[CP_ULIST_WIN].update_handler();
-                                wrefresh(cw_manage[CP_CHAT_WIN].win);
-                                usr_state = USER_LOGIN_STATE;
-                                cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
-                                continue;
-                                // 서버로 부터 새로운 사용자에 대한 알림.
-                            case MSG_NEWUSER_STATE:
-                                if(strcmp(id, ms.id)) {
-                                    insert_usr_list(ms.id);
-                                    cw_manage[CP_ULIST_WIN].update_handler();
+                    } else if(read_len < 0) {
+                        switch(errno) {
+                            case ECONNRESET:
+                                cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
+                                if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
+                                    cp_log_ui(MSG_ERROR_STATE, "re-connect fail...");
                                     break;
-                                } else {
-                                    continue;
                                 }
-                                // 서버로 부터 연결 해제된 사용자에 대한 알림.
-                            case MSG_DELUSER_STATE:
-                                delete_usr_list(ms.id);
-                                cw_manage[CP_ULIST_WIN].update_handler();
+                                continue;
+
+                            default:
+                                cp_log_ui(MSG_ERROR_STATE, 
+                                        "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
+                                        srvname, read_len, errno, strerror(errno));
                                 break;
                         }
+                        cp_logout();
 
-                        // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-                        insert_msg_list(ms.state, ms.id, message_buf);
-                        cw_manage[CP_SHOW_WIN].update_handler();
-                        wrefresh(cw_manage[CP_CHAT_WIN].win);
+                    } else {
+                       cp_rcv_proc(&ms); 
                     }
                 }
 
@@ -626,26 +569,33 @@ void update_show_win()
     draw_win_ui(win, *ui);
 }
 
-void insert_usr_list(char *id)
+struct usr_list_node *insert_usr_list(char *id)
 {
     struct usr_list_node *node;
+    int hash = hash_func(id);
 
     node = (struct usr_list_node *)malloc(sizeof(struct usr_list_node));
+    if(!node) {
+        return NULL;
+    }
 
     strcpy(node->id, id);
 
     pthread_mutex_lock(&usr_list_lock);
-    list_add(&node->list, &usr_list);
+    list_add(&node->list, &usr_list[hash]);
     usr_count++;
     pthread_mutex_unlock(&usr_list_lock);
+
+    return node;
 }
 
 void delete_usr_list(char* id)
 {
     struct usr_list_node *pos;
+    int hash = hash_func(id);
 
     pthread_mutex_lock(&usr_list_lock);
-    list_for_each_entry(pos, &usr_list, list) {
+    list_for_each_entry(pos, &usr_list[hash], list) {
         if(!strcmp(pos->id, id)) {
             list_del(&pos->list);
             free(pos);
@@ -659,12 +609,15 @@ void delete_usr_list(char* id)
 void clear_usr_list()
 {
     struct usr_list_node *node, *tnode;
+    int hash_idx;
 
     pthread_mutex_lock(&usr_list_lock);
-    list_for_each_entry_safe(node, tnode, &usr_list, list) {
-        list_del(&node->list);
-        free(node);
-        usr_count--;
+    for(hash_idx = 0; hash_idx < USER_HASH_SIZE; hash_idx++) {
+        list_for_each_entry_safe(node, tnode, &usr_list[hash_idx], list) {
+            list_del(&node->list);
+            free(node);
+            usr_count--;
+        }
     }
     pthread_mutex_unlock(&usr_list_lock);
 }
@@ -673,7 +626,7 @@ void update_usr_win()
 {
     WINDOW *win = cw_manage[CP_ULIST_WIN].win;
     struct win_ui *ui = &cw_manage[CP_ULIST_WIN].ui;
-    int i = 0, cline = 0, line_max = 0;
+    int i = 0, cline = 0, line_max = 0, hash_idx;
     int print_y, print_x;
     struct usr_list_node *node, *tnode;
 
@@ -682,19 +635,21 @@ void update_usr_win()
     werase(win);
 
     pthread_mutex_lock(&usr_list_lock);
-    list_for_each_entry_safe(node, tnode, &usr_list, list) {
-        print_y = i + 1;
-        print_x = 1;
+    for(hash_idx = 0; hash_idx < USER_HASH_SIZE; hash_idx++) {
+        list_for_each_entry_safe(node, tnode, &usr_list[hash_idx], list) {
+            print_y = i + 1;
+            print_x = 1;
 
-        if(++cline >= line_max) {
-            list_del(&node->list);
-            free(node);
-            continue;
+            if(++cline >= line_max) {
+                list_del(&node->list);
+                free(node);
+                continue;
+            }
+            wattron(win, COLOR_PAIR(4));
+            mvwprintw(win, print_y, print_x, node->id);
+            wattroff(win, COLOR_PAIR(4));
+            i++;
         }
-        wattron(win, COLOR_PAIR(4));
-        mvwprintw(win, print_y, print_x, node->id);
-        wattroff(win, COLOR_PAIR(4));
-        i++;
     }
     pthread_mutex_unlock(&usr_list_lock);
 
@@ -910,6 +865,10 @@ void cp_init_chat()
     init_pair(4, COLOR_CYAN, COLOR_BLACK);
     init_pair(5, COLOR_YELLOW, COLOR_BLACK);
 
+    INIT_LIST_HEAD(&msg_list);
+    INIT_LIST_HEAD(&info_list);
+    init_usr_list();
+
     // 처음 사용자의 상태를 로그아웃 상태로 셋팅
     usr_state = USER_LOGOUT_STATE;
 
@@ -1012,4 +971,97 @@ void cp_log_ui(int type, char *log, ...)
     free(vbuffer);
 }
 
+void cp_logout()
+{
+    close(sock);
+    usr_state = USER_LOGOUT_STATE; 
+    clear_usr_list();
+    cw_manage[CP_ULIST_WIN].update_handler();
+    pthread_cancel(rcv_pthread);
+    cp_log_ui(MSG_ERROR_STATE, "log-out : server(%s)", srvname);
+}
 
+void cp_exit()
+{
+    close(sock);
+    pthread_cancel(rcv_pthread);
+    pthread_cancel(info_win_pthread);
+    pthread_cancel(local_info_win_pthread);
+    unlink(INFO_PIPE_FILE);
+    endwin();
+}
+
+void cp_rcv_proc(msgst *ms)
+{
+    char message_buf[MESSAGE_BUFFER_SIZE];
+    char *usr_id, *pbuf;
+
+    if(!ms) 
+        return;
+
+    // 서버로 부터 온 메시지의 종류를 구별한다.
+    switch(ms->state) {
+        // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
+        case MSG_ALAM_STATE:
+            // 서버로 부터 사용자들의 메시지를 전달 받을 때
+        case MSG_DATA_STATE:
+            strcpy(message_buf, ms->message);
+            break;
+            // 서버로 부터 전체 사용자 목록을 받을 때
+        case MSG_USERLIST_STATE:
+            clear_usr_list();
+            pbuf = ms->message;
+            while(usr_id = strtok(pbuf, USER_DELIM)) {
+                insert_usr_list(usr_id);
+                pbuf = NULL;
+            }
+            cw_manage[CP_ULIST_WIN].update_handler();
+            wrefresh(cw_manage[CP_CHAT_WIN].win);
+            if(usr_state != USER_LOGIN_STATE) {
+                cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
+            }
+            usr_state = USER_LOGIN_STATE;
+            return;
+            // 서버로 부터 새로운 사용자에 대한 알림.
+        case MSG_NEWUSER_STATE:
+            if(!exist_usr_list(ms->id)) {
+                insert_usr_list(ms->id);
+            }
+            cw_manage[CP_ULIST_WIN].update_handler();
+            break;
+            // 서버로 부터 연결 해제된 사용자에 대한 알림.
+        case MSG_DELUSER_STATE:
+            delete_usr_list(ms->id);
+            cw_manage[CP_ULIST_WIN].update_handler();
+            break;
+    }
+
+    // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
+    insert_msg_list(ms->state, ms->id, message_buf);
+    cw_manage[CP_SHOW_WIN].update_handler();
+    wrefresh(cw_manage[CP_CHAT_WIN].win);
+}
+
+void init_usr_list()
+{
+    int i;
+
+    for(i = 0; i < USER_HASH_SIZE; i++) {
+        INIT_LIST_HEAD(&usr_list[i]);
+    }
+}
+
+struct usr_list_node *exist_usr_list(char *id)
+{
+    struct usr_list_node *node = NULL;
+    unsigned int hash;
+
+    hash = hash_func(id);
+    list_for_each_entry(node, &usr_list[hash], list) {
+        if(!strcmp(id, node->id)) {
+            return node;
+        }
+    }
+
+    return NULL;
+}

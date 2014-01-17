@@ -24,7 +24,6 @@
 #endif
 #define SA  struct sockaddr
 #define EPOLL_SIZE 20
-#define USER_HASH_SIZE 20
 
 typedef struct user_data {
     int sock;
@@ -36,7 +35,6 @@ struct user_list_node {
     ud data;
 };
 
-unsigned int hash_func(char *s);
 void init_usr_list();
 struct user_list_node *insert_usr_list(ud data);
 void delete_usr_list(ud data);
