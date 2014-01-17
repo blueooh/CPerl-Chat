@@ -977,8 +977,8 @@ void cp_logout()
     usr_state = USER_LOGOUT_STATE; 
     clear_usr_list();
     cw_manage[CP_ULIST_WIN].update_handler();
-    pthread_cancel(rcv_pthread);
     cp_log_ui(MSG_ERROR_STATE, "log-out : server(%s)", srvname);
+    pthread_cancel(rcv_pthread);
 }
 
 void cp_exit()
