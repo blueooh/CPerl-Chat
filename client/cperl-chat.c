@@ -167,6 +167,8 @@ int cp_connect_server(int try_type)
     struct hostent *entry;
     char *resolved_host;
     int thr_id;
+    int optval;
+    socklen_t optlen = sizeof(optval);
     msgst ms;
 
     if(try_type == MSG_RECONNECT_STATE) {
@@ -183,10 +185,28 @@ int cp_connect_server(int try_type)
         return -1;
     }
 
-    ling.l_onoff = 1;
+    ling.l_onoff = 0;
     ling.l_linger = 0;
-
     setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+
+    /* Check the status for the keepalive option */
+    if(getsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "getsockopt error");
+        close(sock);
+        return -1;
+    }
+    cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE is %s\n", (optval ? "ON" : "OFF"));
+    if(!optval) {
+        /* Set the option active */
+        optval = 1;
+        optlen = sizeof(optval);
+        if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+            cp_log_ui(MSG_ERROR_STATE, "setsockopt error");
+            close(sock);
+            return -1;
+        }
+        cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE set on socket\n");
+    }
 
     entry = gethostbyname(srvname);
     if(!entry) {
@@ -250,12 +270,14 @@ void *rcv_thread(void *data) {
                 break;
 
             case 0:
+                /*
                 ms.state = MSG_AVAILTEST_STATE;
                 if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
                     cp_log_ui(MSG_ERROR_STATE, "write test error: %s(%d)", strerror(errno), errno);
                     cp_logout();
                 }
                 break;
+                */
 
             default:
                 if(FD_ISSET(sock, &tmpfds)) {
@@ -268,6 +290,7 @@ void *rcv_thread(void *data) {
 
                     } else if(read_len < 0) {
                         switch(errno) {
+                            /*
                             case ECONNRESET:
                                 cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
                                 if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
@@ -277,10 +300,11 @@ void *rcv_thread(void *data) {
                                 continue;
 
                             default:
+                            */
                                 cp_log_ui(MSG_ERROR_STATE, 
                                         "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
                                         srvname, read_len, errno, strerror(errno));
-                                break;
+                                //break;
                         }
                         cp_logout();
 
