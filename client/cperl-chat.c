@@ -195,7 +195,7 @@ int cp_connect_server(int try_type)
         close(sock);
         return -1;
     }
-    cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE is %s\n", (optval ? "ON" : "OFF"));
+    cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE is %s", (optval ? "ON" : "OFF"));
     if(!optval) {
         /* Set the option active */
         optval = 1;
@@ -205,7 +205,7 @@ int cp_connect_server(int try_type)
             close(sock);
             return -1;
         }
-        cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE set on socket\n");
+        cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE set on socket");
     }
 
     entry = gethostbyname(srvname);
@@ -377,17 +377,16 @@ void clear_info_list()
 
 void update_info_win()
 {
-    WINDOW *win = cw_manage[CP_INFO_WIN].win;
+    WINDOW *win;
     struct win_ui *ui = &cw_manage[CP_INFO_WIN].ui;
     int i = 0, cline = 0, line_max = 0;
     int print_y, print_x;
     struct info_list_node *node, *tnode;
 
-    line_max = ui->lines - 1;
-
-    werase(win);
-
     pthread_mutex_lock(&info_list_lock);
+    win = cw_manage[CP_INFO_WIN].win;
+    line_max = ui->lines - 1;
+    werase(win);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
         print_y = (ui->lines - 2) - i;
         print_x = 1;
@@ -403,9 +402,8 @@ void update_info_win()
         wattroff(win, COLOR_PAIR(5));
         i++;
     }
-    pthread_mutex_unlock(&info_list_lock);
-
     draw_win_ui(win, *ui);
+    pthread_mutex_unlock(&info_list_lock);
 }
 
 void update_local_info_win()
@@ -516,17 +514,16 @@ void clear_msg_list()
 
 void update_show_win()
 {
-    WINDOW *win = cw_manage[CP_SHOW_WIN].win;
+    WINDOW *win;
     struct win_ui *ui = &cw_manage[CP_SHOW_WIN].ui;
     int i = 0, cline = 0, line_max = 0;
     int print_y, print_x;
     struct msg_list_node *node, *tnode;
 
-    line_max = ui->lines - 1;
-
-    werase(win);
-
     pthread_mutex_lock(&msg_list_lock);
+    win = cw_manage[CP_SHOW_WIN].win;
+    line_max = ui->lines - 1;
+    werase(win);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
         print_x = 1;
         print_y = (ui->lines - 2) - i;
@@ -588,9 +585,8 @@ void update_show_win()
         }
         i++;
     }
-    pthread_mutex_unlock(&msg_list_lock);
-
     draw_win_ui(win, *ui);
+    pthread_mutex_unlock(&msg_list_lock);
 }
 
 struct usr_list_node *insert_usr_list(char *id)
@@ -648,17 +644,16 @@ void clear_usr_list()
 
 void update_usr_win()
 {
-    WINDOW *win = cw_manage[CP_ULIST_WIN].win;
+    WINDOW *win;
     struct win_ui *ui = &cw_manage[CP_ULIST_WIN].ui;
     int i = 0, cline = 0, line_max = 0, hash_idx;
     int print_y, print_x;
     struct usr_list_node *node, *tnode;
 
-    line_max = ui->lines;
-
-    werase(win);
-
     pthread_mutex_lock(&usr_list_lock);
+    win = cw_manage[CP_ULIST_WIN].win;
+    line_max = ui->lines;
+    werase(win);
     for(hash_idx = 0; hash_idx < USER_HASH_SIZE; hash_idx++) {
         list_for_each_entry_safe(node, tnode, &usr_list[hash_idx], list) {
             print_y = i + 1;
@@ -675,9 +670,8 @@ void update_usr_win()
             i++;
         }
     }
-    pthread_mutex_unlock(&usr_list_lock);
-
     draw_win_ui(win, *ui);
+    pthread_mutex_unlock(&usr_list_lock);
 }
 
 void current_time()
