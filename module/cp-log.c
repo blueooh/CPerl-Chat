@@ -20,7 +20,8 @@ int cp_log(char *buf, ...)
     cp_va_format(buf);
     log_size = cp_get_log_time(log_buf, sizeof(log_buf));
 
-    if(vbuffer[strlen(vbuffer)-1] == '\n') {
+    int vb_len = sizeof(vbuffer) - 1;
+    if(vbuffer[vb_len] == '\n') {
         log_size += snprintf(log_buf + log_size, vaa_size, "%s", vbuffer);
     } else {
         log_size += snprintf(log_buf + log_size, vaa_size + 1, "%s\n", vbuffer);

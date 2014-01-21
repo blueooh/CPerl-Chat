@@ -3,7 +3,6 @@
 struct cp_win_manage cw_manage[CP_MAX_WIN];
 static int term_y = 0, term_x = 0;
 int sock;
-struct linger ling;
 pthread_t rcv_pthread, info_win_pthread, local_info_win_pthread;
 int usr_state;
 char time_buf[TIME_BUFFER_SIZE];
@@ -64,7 +63,9 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    cp_connect_server(MSG_NEWCONNECT_STATE);
+    if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "failed connect server: %s", srvname);
+    }
 
     while(1) {
         msgst ms;
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
 
                 // 접속 시도
                 if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
+                    cp_log_ui(MSG_ERROR_STATE, "failed connect server: %s", srvname);
                     continue;
                 }
 
@@ -167,8 +169,6 @@ int cp_connect_server(int try_type)
     struct hostent *entry;
     char *resolved_host;
     int thr_id;
-    int optval;
-    socklen_t optlen = sizeof(optval);
     msgst ms;
 
     if(try_type == MSG_RECONNECT_STATE) {
@@ -185,27 +185,8 @@ int cp_connect_server(int try_type)
         return -1;
     }
 
-    ling.l_onoff = 0;
-    ling.l_linger = 0;
-    setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-
-    /* Check the status for the keepalive option */
-    if(getsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "getsockopt error");
-        close(sock);
+    if(cp_sock_option() < 0) {
         return -1;
-    }
-    cp_log("SO_KEEPALIVE is %s", (optval ? "ON" : "OFF"));
-    if(!optval) {
-        /* Set the option active */
-        optval = 1;
-        optlen = sizeof(optval);
-        if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
-            cp_log_ui(MSG_ERROR_STATE, "setsockopt error");
-            close(sock);
-            return -1;
-        }
-        cp_log("SO_KEEPALIVE set on socket");
     }
 
     entry = gethostbyname(srvname);
@@ -1082,4 +1063,42 @@ struct usr_list_node *exist_usr_list(char *id)
     }
 
     return NULL;
+}
+
+int cp_sock_option()
+{
+    struct linger ling;
+    struct timeval tv;
+    int kaopt;
+    socklen_t tvlen, kalen, linglen;
+
+    /* linger option */
+    ling.l_onoff = 0;
+    ling.l_linger = 0;
+    linglen = sizeof(ling);
+    if(setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, linglen) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "setsock error: linger");
+        return -1;
+    }
+
+    /* rcv timeout */
+    tv.tv_sec = 5;
+    tv.tv_usec =0;
+    tvlen = sizeof(tv);
+    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, tvlen) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "setsockopt error: rcv timeout");
+        return -1;
+    }
+    cp_log("setsockopt: rcv timeout sec: %d, usev: %d", tv.tv_sec, tv.tv_usec);
+
+    /* Set the option active */
+    kaopt = 1;
+    kalen = sizeof(kaopt);
+    if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &kaopt, kalen) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "setsockopt error: keepalive");
+        close(sock);
+        return -1;
+    }
+
+    return 1;
 }

@@ -155,4 +155,5 @@ void cp_logout();
 void cp_exit();
 void cp_rcv_proc(msgst *ms);
 void init_usr_list();
+int cp_sock_option();
 #endif
