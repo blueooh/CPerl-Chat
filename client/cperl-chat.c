@@ -299,8 +299,8 @@ void *rcv_thread(void *data) {
                                 }
                                 continue;
 
-                            default:
                             */
+                            default:
                                 cp_log_ui(MSG_ERROR_STATE, 
                                         "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
                                         srvname, read_len, errno, strerror(errno));
