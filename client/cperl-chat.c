@@ -195,7 +195,7 @@ int cp_connect_server(int try_type)
         close(sock);
         return -1;
     }
-    cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE is %s", (optval ? "ON" : "OFF"));
+    cp_log("SO_KEEPALIVE is %s", (optval ? "ON" : "OFF"));
     if(!optval) {
         /* Set the option active */
         optval = 1;
@@ -205,7 +205,7 @@ int cp_connect_server(int try_type)
             close(sock);
             return -1;
         }
-        cp_log_ui(MSG_ERROR_STATE, "SO_KEEPALIVE set on socket");
+        cp_log("SO_KEEPALIVE set on socket");
     }
 
     entry = gethostbyname(srvname);
