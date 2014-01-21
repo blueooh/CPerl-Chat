@@ -272,6 +272,10 @@ void *rcv_thread(void *data) {
                     } else if(read_len < 0) {
                         switch(errno) {
                             /*
+                            case EAGAIN:
+                                continue;
+                                */
+                            /*
                             case ECONNRESET:
                                 cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
                                 if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
@@ -279,13 +283,13 @@ void *rcv_thread(void *data) {
                                     break;
                                 }
                                 continue;
+                                */
 
-                            */
                             default:
                                 cp_log_ui(MSG_ERROR_STATE, 
                                         "rcv thread read error: server(%s), read_len(%d), errno(%d), strerror(%s)", 
                                         srvname, read_len, errno, strerror(errno));
-                                //break;
+                                break;
                         }
                         cp_logout();
 
@@ -1067,12 +1071,13 @@ struct usr_list_node *exist_usr_list(char *id)
 
 int cp_sock_option()
 {
-    struct linger ling;
-    struct timeval tv;
+    //struct linger ling;
+    //struct timeval tv;
     int kaopt;
-    socklen_t tvlen, kalen, linglen;
+    socklen_t /*tvlen,*/ /*linglen,*/ kalen;
 
     /* linger option */
+    /*
     ling.l_onoff = 0;
     ling.l_linger = 0;
     linglen = sizeof(ling);
@@ -1080,8 +1085,10 @@ int cp_sock_option()
         cp_log_ui(MSG_ERROR_STATE, "setsock error: linger");
         return -1;
     }
+    */
 
     /* rcv timeout */
+    /*
     tv.tv_sec = 5;
     tv.tv_usec =0;
     tvlen = sizeof(tv);
@@ -1089,7 +1096,7 @@ int cp_sock_option()
         cp_log_ui(MSG_ERROR_STATE, "setsockopt error: rcv timeout");
         return -1;
     }
-    cp_log("setsockopt: rcv timeout sec: %d, usev: %d", tv.tv_sec, tv.tv_usec);
+    */
 
     /* Set the option active */
     kaopt = 1;
