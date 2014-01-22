@@ -251,14 +251,11 @@ void *rcv_thread(void *data) {
                 break;
 
             case 0:
-                /*
                 ms.state = MSG_AVAILTEST_STATE;
                 if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-                    cp_log_ui(MSG_ERROR_STATE, "write test error: %s(%d)", strerror(errno), errno);
-                    cp_logout();
+                    cp_log_ui(MSG_ERROR_STATE, "%s: %d", strerror(errno), errno);
                 }
                 break;
-                */
 
             default:
                 if(FD_ISSET(sock, &tmpfds)) {
@@ -271,11 +268,7 @@ void *rcv_thread(void *data) {
 
                     } else if(read_len < 0) {
                         switch(errno) {
-                            /*
-                            case EAGAIN:
-                                continue;
-                                */
-                            /*
+                            case ETIMEDOUT:
                             case ECONNRESET:
                                 cp_log_ui(MSG_ERROR_STATE, "%s(%d), try re-connect...!", strerror(errno), errno);
                                 if(cp_connect_server(MSG_RECONNECT_STATE) < 0) {
@@ -283,7 +276,6 @@ void *rcv_thread(void *data) {
                                     break;
                                 }
                                 continue;
-                                */
 
                             default:
                                 cp_log_ui(MSG_ERROR_STATE, 
@@ -1071,13 +1063,10 @@ struct usr_list_node *exist_usr_list(char *id)
 
 int cp_sock_option()
 {
-    //struct linger ling;
-    //struct timeval tv;
-    int kaopt;
-    socklen_t /*tvlen,*/ /*linglen,*/ kalen;
-
+#if 0
     /* linger option */
-    /*
+    struct linger ling;
+    socklen_t kalen;
     ling.l_onoff = 0;
     ling.l_linger = 0;
     linglen = sizeof(ling);
@@ -1085,10 +1074,12 @@ int cp_sock_option()
         cp_log_ui(MSG_ERROR_STATE, "setsock error: linger");
         return -1;
     }
-    */
+#endif
 
+#if 0
     /* rcv timeout */
-    /*
+    struct timeval tv;
+    socklen_t tvlen;
     tv.tv_sec = 5;
     tv.tv_usec =0;
     tvlen = sizeof(tv);
@@ -1096,9 +1087,12 @@ int cp_sock_option()
         cp_log_ui(MSG_ERROR_STATE, "setsockopt error: rcv timeout");
         return -1;
     }
-    */
+#endif
 
+#if 0
     /* Set the option active */
+    int kaopt;
+    socklen_t kalen;
     kaopt = 1;
     kalen = sizeof(kaopt);
     if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &kaopt, kalen) < 0) {
@@ -1106,6 +1100,7 @@ int cp_sock_option()
         close(sock);
         return -1;
     }
+#endif
 
     return 1;
 }
