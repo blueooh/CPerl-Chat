@@ -23,6 +23,7 @@ pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t usr_list_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t info_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
+int scroll_index;
 unsigned int msg_count;
 unsigned int usr_count;
 unsigned int info_count;
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     set_env();
     // Ncurses 환경 초기화
     initscr();
+    raw();
     start_color();
     // cperl-chat init
     cp_init_chat();
@@ -69,77 +71,21 @@ int main(int argc, char *argv[])
 
     while(1) {
         msgst ms;
-        char *argv_parse;
         char str[MESSAGE_BUFFER_SIZE];
-        char *cur_opt;
 
-        // 입력이 완료되면 문자열을 화면에서 지우기 위해 사용자 입력창을 재 생성 한다.
+        str[0] = '\0';
         cw_manage[CP_CHAT_WIN].update_handler();
-        // 사용자의 입력을 받음.
-        mvwgetstr(cw_manage[CP_CHAT_WIN].win, 1, 1, str);
+        get_input_buffer(str);
 
-        // 아무값이 없는 입력은 무시
         if(!strlen(str)) 
             continue;
 
-        if(str[0] == '/') {
-            cur_opt = str + 1;
-            if(cp_option_check(cur_opt, CP_OPT_HELP, false)) {
-                int i;
-                for(i = 0; i < CP_OPT_MAX; i++) {
-                    insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
-                }
-                cw_manage[CP_SHOW_WIN].update_handler();
-                continue;
-            } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
-                // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
-                if(usr_state == USER_LOGIN_STATE) {
-                    cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)", srvname);
-                    cw_manage[CP_SHOW_WIN].update_handler();
-                    continue;
-                }
-                argv_parse = strtok(str, EXEC_DELIM);
-                argv_parse = strtok(NULL, EXEC_DELIM);
-                if(argv_parse) {
-                    strcpy(srvname, argv_parse);
-                }
-
-                // 접속 시도
-                if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
-                    cp_log_ui(MSG_ERROR_STATE, "failed connect server: %s", srvname);
-                    continue;
-                }
-
-            } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
-                cp_logout();
-
-            } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
-                char tfile[FILE_NAME_MAX];
-
-                argv_parse = strtok(str, EXEC_DELIM);
-                argv_parse = strtok(NULL, EXEC_DELIM);
-                sprintf(tfile, "%s%s", INFO_SCRIPT_PATH, argv_parse);
-                if(!access(tfile, R_OK | X_OK)) {
-                    sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
-                } else {
-                    cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!", tfile);
-                }
-
-            } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
-                // 메시지 출력창에 있는 메시지를 모두 지운다.
-                clear_msg_list();
-                cw_manage[CP_SHOW_WIN].update_handler();
-
-            } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
-                break;
-            } 
-
+        if(str[0] == OPTION_CHAR) {
+            parse_option(str);
         } else {
-            // 로그인 상태일때만 서버에 메시지를 전달하게 된다.
             if(usr_state == USER_LOGIN_STATE) {
                 ms.state = MSG_DATA_STATE;
-                memcpy(ms.id, id, strlen(id));
-                ms.id[strlen(id)] = '\0';
+                strcpy(ms.id, id);
                 strcpy(ms.message, str);
                 if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
                     cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
@@ -147,8 +93,6 @@ int main(int argc, char *argv[])
             }
         }
     }
-
-    cp_exit();
 
     return 0;
 }
@@ -457,9 +401,11 @@ void update_local_info_win()
 
 void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
 {
-    struct msg_list_node *node, *tnode;
+    struct msg_list_node *node, *dnode, *tnode;
 
     cp_va_format(msg);
+
+    scroll_index = 0;
 
     node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
     node->type = msg_type;
@@ -470,7 +416,16 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
 
     pthread_mutex_lock(&msg_list_lock);
     list_add(&node->list, &msg_list);
-    msg_count++;
+    /* full message count, delete the oldest node */
+    if(msg_count >= MAX_MSG_COUNT) {
+        list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
+            list_del(&dnode->list);
+            free(dnode);
+            break;
+        }
+    } else {
+        msg_count++;
+    }
     pthread_mutex_unlock(&msg_list_lock);
 
     free(vbuffer);
@@ -485,7 +440,32 @@ void clear_msg_list()
         list_del(&node->list);
         free(node);
         msg_count--;
-        pthread_mutex_unlock(&msg_list_lock);
+    }
+    pthread_mutex_unlock(&msg_list_lock);
+}
+
+void set_scroll_index(int action)
+{
+    int win_line = cw_manage[CP_SHOW_WIN].ui.lines - 1;
+
+    switch(action) {
+        case SCROLL_UP:
+            if((msg_count - scroll_index) >= win_line) {
+                scroll_index += 3;
+            }
+            //cp_log("scroll up: msg_count(%d), win_line(%d), index(%d)", msg_count, win_line, scroll_index);
+            break;
+
+        case SCROLL_DOWN:
+            if(scroll_index >= 3) {
+                scroll_index -= 3;
+            }
+            //cp_log("scroll down: msg_count(%d), win_line(%d), index(%d)", msg_count, win_line, scroll_index);
+            break;
+
+        case SCROLL_NONE:
+        default:
+            break;
     }
 }
 
@@ -493,7 +473,7 @@ void update_show_win()
 {
     WINDOW *win;
     struct win_ui *ui = &cw_manage[CP_SHOW_WIN].ui;
-    int i = 0, cline = 0, line_max = 0;
+    int i = 0, cline = 0, line_max = 0, scrolled = 0;
     int print_y, print_x;
     struct msg_list_node *node, *tnode;
 
@@ -502,13 +482,15 @@ void update_show_win()
     line_max = ui->lines - 1;
     werase(win);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
+        if(scrolled++ < scroll_index) {
+            continue;
+        }
+
         print_x = 1;
         print_y = (ui->lines - 2) - i;
 
         if(++cline >= line_max) {
-            list_del(&node->list);
-            free(node);
-            continue;
+            break;
         }
 
         switch(node->type) {
@@ -854,6 +836,8 @@ void cp_init_chat()
     signal(SIGINT, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
 
+    mousemask(BUTTON1_CLICKED|BUTTON4_PRESSED|BUTTON2_PRESSED, NULL);
+
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
     init_pair(3, COLOR_RED, COLOR_BLACK);
@@ -937,6 +921,7 @@ void cp_create_win()
     int win_idx;
     for(win_idx = 0; win_idx < CP_MAX_WIN; win_idx++) {
         cw_manage[win_idx].win = create_window(cw_manage[win_idx].ui);
+        keypad(cw_manage[win_idx].win, true);
     }
 }
 
@@ -984,6 +969,7 @@ void cp_exit()
     pthread_cancel(local_info_win_pthread);
     unlink(INFO_PIPE_FILE);
     endwin();
+    exit(0);
 }
 
 void cp_rcv_proc(msgst *ms)
@@ -1103,4 +1089,103 @@ int cp_sock_option()
 #endif
 
     return 1;
+}
+
+void get_input_buffer(char *ip_buff)
+{
+    MEVENT event;
+    int ch, chwin_x = 1, c_idx = 0;
+
+    while(1) {
+        ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
+
+        if(ch == KEY_F(5)) {
+            /* refresh terminal */
+            resize_handler(0);
+            return;
+
+        } else if(ch == KEY_MOUSE) {
+            /* input mouse event */
+            if(getmouse(&event) == OK) {
+                if (event.bstate & BUTTON4_PRESSED) {
+                    set_scroll_index(SCROLL_UP);
+
+                } else if (event.bstate & BUTTON2_PRESSED || event.bstate == 0x8000000) {
+                    set_scroll_index(SCROLL_DOWN);
+                }
+
+                cw_manage[CP_SHOW_WIN].update_handler();
+            }
+
+        } else if (ch == '\n') {
+            /* input end */
+            break;
+
+        } else if (ch == KEY_BACKSPACE) {
+        } else {
+            /* char inputed store to buffer */
+            c_idx += sprintf(ip_buff + c_idx, "%c", ch);
+            mvwaddch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x++, ch);
+            continue;
+        }
+    }
+}
+
+void parse_option(char *buff) 
+{
+    char *cur_opt;
+    char *argv_parse;
+
+    cur_opt = buff + 1;
+
+    if(cp_option_check(cur_opt, CP_OPT_HELP, false)) {
+        int i;
+        for(i = 0; i < CP_OPT_MAX; i++) {
+            insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
+        }
+        cw_manage[CP_SHOW_WIN].update_handler();
+
+    } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
+        // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
+        if(usr_state == USER_LOGIN_STATE) {
+            cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)", srvname);
+            cw_manage[CP_SHOW_WIN].update_handler();
+        }
+
+        argv_parse = strtok(buff, EXEC_DELIM);
+        argv_parse = strtok(NULL, EXEC_DELIM);
+        if(argv_parse) {
+            strcpy(srvname, argv_parse);
+        }
+
+        // 접속 시도
+        if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
+            cp_log_ui(MSG_ERROR_STATE, "failed connect server: %s", srvname);
+        }
+
+    } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
+        cp_logout();
+
+    } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
+        char tfile[FILE_NAME_MAX];
+
+        argv_parse = strtok(buff, EXEC_DELIM);
+        argv_parse = strtok(NULL, EXEC_DELIM);
+        sprintf(tfile, "%s%s", INFO_SCRIPT_PATH, argv_parse);
+        if(!access(tfile, R_OK | X_OK)) {
+            sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
+        } else {
+            cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!", tfile);
+        }
+
+    } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
+        // 메시지 출력창에 있는 메시지를 모두 지운다.
+        clear_msg_list();
+        cw_manage[CP_SHOW_WIN].update_handler();
+
+    } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
+        cp_exit();
+    } 
+
+
 }

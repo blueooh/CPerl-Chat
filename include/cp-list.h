@@ -47,4 +47,9 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
         &pos->member != (head);                    \
         pos = n, n = list_entry(n->member.next, typeof(*n), member))
 
+#define list_for_each_entry_safe_reverse(pos, n, head, member)      \
+    for (pos = list_entry((head)->prev, typeof(*pos), member),  \
+            n = list_entry(pos->member.prev, typeof(*pos), member); \
+            &pos->member != (head);                    \
+            pos = n, n = list_entry(n->member.prev, typeof(*n), member))
 #endif

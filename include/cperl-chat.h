@@ -32,7 +32,7 @@
 
 #ifdef TEST
 #define SERVER_ADDRESS "127.0.0.1"
-#define SERVER_PORT "8889"
+#define SERVER_PORT "8888"
 #define INFO_SCRIPT_PATH "script/"
 #define INFO_PIPE_FILE "./info_pipe"
 #else
@@ -42,7 +42,9 @@
 #define INFO_PIPE_FILE "/tmp/info_pipe"
 #endif
 
+#define OPTION_CHAR '/'
 #define MAXINTERFACES 20
+#define MAX_MSG_COUNT 100
 
 typedef void (*cb_update)(void);
 
@@ -64,6 +66,12 @@ typedef enum cp_option_type {
     CP_OPT_EXIT,
     CP_OPT_MAX,
 }option_type;
+
+enum scroll_action {
+    SCROLL_UP,
+    SCROLL_DOWN,
+    SCROLL_NONE,
+};
 
 struct cp_chat_options {
     option_type op_type;
@@ -156,4 +164,7 @@ void cp_exit();
 void cp_rcv_proc(msgst *ms);
 void init_usr_list();
 int cp_sock_option();
+void get_input_buffer();
+void set_scroll_index(int action);
+void parse_option(char *buff);
 #endif
