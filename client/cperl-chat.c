@@ -1121,6 +1121,14 @@ void get_input_buffer(char *ip_buff)
             /* input end */
             break;
 
+        } else if(ch == KEY_UP) {
+            set_scroll_index(SCROLL_UP);
+            cw_manage[CP_SHOW_WIN].update_handler();
+
+        } else if(ch == KEY_DOWN) {
+            set_scroll_index(SCROLL_DOWN);
+            cw_manage[CP_SHOW_WIN].update_handler();
+
         } else if (ch == KEY_BACKSPACE) {
         } else {
             /* char inputed store to buffer */
