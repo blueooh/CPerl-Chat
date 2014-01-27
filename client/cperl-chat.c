@@ -1094,10 +1094,11 @@ int cp_sock_option()
 void get_input_buffer(char *ip_buff)
 {
     MEVENT event;
-    int ch, chwin_x = 1, c_idx = 0;
+    int ch, chwin_x = 1, c_idx = 0, bytes = 0;
+    char _c, _char[100];
 
     while(1) {
-        ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
+        _c = ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
 
         if(ch == KEY_F(5)) {
             /* refresh terminal */
@@ -1130,11 +1131,42 @@ void get_input_buffer(char *ip_buff)
             cw_manage[CP_SHOW_WIN].update_handler();
 
         } else if (ch == KEY_BACKSPACE) {
+            if(c_idx <= 0 ) {
+                c_idx = 0;
+                continue;
+            }
+            if(ip_buff[c_idx - 1] < 0) {
+                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
+                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
+                ip_buff[c_idx - 3] = '\0';
+                c_idx -= 3;
+            } else {
+                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, --chwin_x);
+                ip_buff[c_idx - 1] = '\0';
+                c_idx--;
+            }
         } else {
             /* char inputed store to buffer */
             c_idx += sprintf(ip_buff + c_idx, "%c", ch);
-            mvwaddch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x++, ch);
-            continue;
+
+            if(_c >= 0) {
+                /* 1byte or ascii char */
+                cp_log_ui(MSG_ERROR_STATE, "pressed key: %d", _c);
+                _char[0] = _c;
+                _char[1] = '\0';
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x++, _char);
+
+            } else {
+                /* handle 3bytes char */
+                cp_log_ui(MSG_ERROR_STATE, "pressed key: %d", _c);
+                _char[bytes++] = _c;
+                if(bytes >= 3) {
+                    bytes = 0;
+                    _char[3] = '\0';
+                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x+=2, _char);
+                    memset(_char, 0x00, 100);
+                }
+            }
         }
     }
 }
