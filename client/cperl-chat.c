@@ -1098,6 +1098,7 @@ void get_input_buffer(char *ip_buff)
     char _c, _char[100];
 
     while(1) {
+        wrefresh(cw_manage[CP_CHAT_WIN].win);
         _c = ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
 
         if(ch == KEY_F(5)) {
@@ -1138,10 +1139,12 @@ void get_input_buffer(char *ip_buff)
             if(ip_buff[c_idx - 1] < 0) {
                 mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
                 mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x, " ");
                 ip_buff[c_idx - 3] = '\0';
                 c_idx -= 3;
             } else {
                 mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, --chwin_x);
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x, " ");
                 ip_buff[c_idx - 1] = '\0';
                 c_idx--;
             }
