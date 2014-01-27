@@ -1151,14 +1151,12 @@ void get_input_buffer(char *ip_buff)
 
             if(_c >= 0) {
                 /* 1byte or ascii char */
-                cp_log_ui(MSG_ERROR_STATE, "pressed key: %d", _c);
                 _char[0] = _c;
                 _char[1] = '\0';
                 mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x++, _char);
 
             } else {
                 /* handle 3bytes char */
-                cp_log_ui(MSG_ERROR_STATE, "pressed key: %d", _c);
                 _char[bytes++] = _c;
                 if(bytes >= 3) {
                     bytes = 0;
