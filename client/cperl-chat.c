@@ -15,6 +15,7 @@ struct cp_chat_options options[] = {
     {CP_OPT_CONNECT, "connect", 7, "/connect [server name]: Try connect to server"},
     {CP_OPT_DISCONNECT, "disconnect", 10, "/disconnect [no argument]: Try disconnect from server"},
     {CP_OPT_SCRIPT, "script", 6, "/script [script name]: Excute script you made to plugin"},
+    {CP_OPT_REFRESH, "refresh", 6, "F5 Key terminal UI refresh"},
     {CP_OPT_CLEAR, "clear", 5, "/clear [no argument]: Clear messages in show window"},
     {CP_OPT_EXIT, "exit", 4, "/exit [no argument]: Exit program"},
 };
@@ -1136,18 +1137,22 @@ void get_input_buffer(char *ip_buff)
                 c_idx = 0;
                 continue;
             }
+
             if(ip_buff[c_idx - 1] < 0) {
-                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
-                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x--);
-                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x, " ");
-                ip_buff[c_idx - 3] = '\0';
-                c_idx -= 3;
+                /* delete 3 bytes char */
+                ip_buff[c_idx -= 3] = '\0';
+                chwin_x -= 2;
+
             } else {
-                mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, --chwin_x);
-                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x, " ");
-                ip_buff[c_idx - 1] = '\0';
-                c_idx--;
+                /* delete 1 bytes char */
+                ip_buff[c_idx -= 1] = '\0';
+                chwin_x -= 1;
             }
+
+            mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
+            cw_manage[CP_CHAT_WIN].update_handler();
+            mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, ip_buff);
+
         } else {
             /* char inputed store to buffer */
             c_idx += sprintf(ip_buff + c_idx, "%c", ch);
@@ -1165,7 +1170,6 @@ void get_input_buffer(char *ip_buff)
                     bytes = 0;
                     _char[3] = '\0';
                     mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x+=2, _char);
-                    memset(_char, 0x00, 100);
                 }
             }
         }

@@ -63,6 +63,7 @@ typedef enum cp_option_type {
     CP_OPT_DISCONNECT,
     CP_OPT_SCRIPT,
     CP_OPT_CLEAR,
+    CP_OPT_REFRESH,
     CP_OPT_EXIT,
     CP_OPT_MAX,
 }option_type;
