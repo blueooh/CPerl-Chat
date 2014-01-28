@@ -1189,16 +1189,19 @@ void parse_option(char *buff)
 
     if(cp_option_check(cur_opt, CP_OPT_HELP, false)) {
         int i;
+
         for(i = 0; i < CP_OPT_MAX; i++) {
             insert_msg_list(MSG_ALAM_STATE, "", options[i].op_desc);
         }
         cw_manage[CP_SHOW_WIN].update_handler();
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_CONNECT, true)) {
         // 이미 사용자 로그인 상태이면 접속하지 않기 위한 처리를 함.
         if(usr_state == USER_LOGIN_STATE) {
             cp_log_ui(MSG_ERROR_STATE, "no more connection.., already connected: srv(%s)", srvname);
             cw_manage[CP_SHOW_WIN].update_handler();
+            return;
         }
 
         argv_parse = strtok(buff, EXEC_DELIM);
@@ -1211,9 +1214,11 @@ void parse_option(char *buff)
         if(cp_connect_server(MSG_NEWCONNECT_STATE) < 0) {
             cp_log_ui(MSG_ERROR_STATE, "failed connect server: %s", srvname);
         }
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_DISCONNECT, false)) {
         cp_logout();
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_SCRIPT, true)) {
         char tfile[FILE_NAME_MAX];
@@ -1221,20 +1226,27 @@ void parse_option(char *buff)
         argv_parse = strtok(buff, EXEC_DELIM);
         argv_parse = strtok(NULL, EXEC_DELIM);
         sprintf(tfile, "%s%s", INFO_SCRIPT_PATH, argv_parse);
+
         if(!access(tfile, R_OK | X_OK)) {
             sprintf(plugin_cmd, "%s %s", tfile, INFO_PIPE_FILE);
+
         } else {
             cp_log_ui(MSG_ERROR_STATE, "excute script error: %s cannot access!", tfile);
         }
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_CLEAR, false)) {
         // 메시지 출력창에 있는 메시지를 모두 지운다.
         clear_msg_list();
         cw_manage[CP_SHOW_WIN].update_handler();
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
         cp_exit();
+        return;
+
+    } else {
+        cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
+        return;
     } 
-
-
 }
