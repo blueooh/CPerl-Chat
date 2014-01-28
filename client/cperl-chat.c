@@ -15,8 +15,8 @@ struct cp_chat_options options[] = {
     {CP_OPT_CONNECT, "connect", 7, "/connect [server name]: Try connect to server"},
     {CP_OPT_DISCONNECT, "disconnect", 10, "/disconnect [no argument]: Try disconnect from server"},
     {CP_OPT_SCRIPT, "script", 6, "/script [script name]: Excute script you made to plugin"},
-    {CP_OPT_REFRESH, "refresh", 6, "F5 Key terminal UI refresh"},
     {CP_OPT_CLEAR, "clear", 5, "/clear [no argument]: Clear messages in show window"},
+    {CP_OPT_REFRESH, "refresh", 6, "F5 Key terminal UI refresh"},
     {CP_OPT_EXIT, "exit", 4, "/exit [no argument]: Exit program"},
 };
 
