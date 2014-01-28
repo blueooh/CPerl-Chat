@@ -1165,7 +1165,8 @@ void get_input_buffer(char *input_buffer)
                 /* 1byte or ascii char */
                 _char[0] = _c;
                 _char[1] = '\0';
-                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor += 1, _char);
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor, _char);
+                cursor += 1;
 
             } else {
                 /* handle 3bytes char */
@@ -1173,7 +1174,8 @@ void get_input_buffer(char *input_buffer)
                 if(bytes >= 3) {
                     bytes = 0;
                     _char[3] = '\0';
-                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor += 2, _char);
+                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor, _char);
+                    cursor += 2;
                 }
             }
         }
