@@ -1092,15 +1092,15 @@ int cp_sock_option()
     return 1;
 }
 
-void get_input_buffer(char *ip_buff)
+void get_input_buffer(char *input_buffer)
 {
     MEVENT event;
-    int ch, chwin_x = 1, c_idx = 0, bytes = 0;
+    int ch, cursor = 1, buf_idx = 0, bytes = 0;
     char _c, _char[100];
 
     while(1) {
         wrefresh(cw_manage[CP_CHAT_WIN].win);
-        _c = ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
+        _c = ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, cursor);
 
         if(ch == KEY_F(5)) {
             /* refresh terminal */
@@ -1133,35 +1133,39 @@ void get_input_buffer(char *ip_buff)
             cw_manage[CP_SHOW_WIN].update_handler();
 
         } else if (ch == KEY_BACKSPACE) {
-            if(c_idx <= 0 ) {
-                c_idx = 0;
+            if(cursor <= 1 || buf_idx <= 0) {
+                /* if cursor or buffer index is zero or minus index, 
+                 * init index and cursor */
+                cursor = 1;
+                buf_idx = 0;
                 continue;
             }
 
-            if(ip_buff[c_idx - 1] < 0) {
+            if(input_buffer[buf_idx - 1] < 0) {
                 /* delete 3 bytes char */
-                ip_buff[c_idx -= 3] = '\0';
-                chwin_x -= 2;
+                input_buffer[buf_idx -= 3] = '\0';
+                cursor -= 2;
 
             } else {
                 /* delete 1 bytes char */
-                ip_buff[c_idx -= 1] = '\0';
-                chwin_x -= 1;
+                input_buffer[buf_idx -= 1] = '\0';
+                cursor -= 1;
             }
 
-            mvwdelch(cw_manage[CP_CHAT_WIN].win, 1, chwin_x);
             cw_manage[CP_CHAT_WIN].update_handler();
-            mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, ip_buff);
+            mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
 
         } else {
             /* char inputed store to buffer */
-            c_idx += sprintf(ip_buff + c_idx, "%c", ch);
+            buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
 
+            /* if _c >= 0, regard for 1byte char or ascii char however if not, it is multi-bytes 
+             * this time char should be considered with en/de-coding type. but that is not considered yet. */
             if(_c >= 0) {
                 /* 1byte or ascii char */
                 _char[0] = _c;
                 _char[1] = '\0';
-                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x++, _char);
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor += 1, _char);
 
             } else {
                 /* handle 3bytes char */
@@ -1169,7 +1173,7 @@ void get_input_buffer(char *ip_buff)
                 if(bytes >= 3) {
                     bytes = 0;
                     _char[3] = '\0';
-                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, chwin_x+=2, _char);
+                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor += 2, _char);
                 }
             }
         }

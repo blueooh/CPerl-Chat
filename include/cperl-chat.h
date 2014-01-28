@@ -165,7 +165,7 @@ void cp_exit();
 void cp_rcv_proc(msgst *ms);
 void init_usr_list();
 int cp_sock_option();
-void get_input_buffer();
+void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
 void parse_option(char *buff);
 #endif
