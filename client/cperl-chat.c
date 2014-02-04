@@ -102,10 +102,12 @@ void cp_log_print(int type, const char* err_msg, ...)
 {
     cp_va_format(err_msg);
 
-    insert_msg_list(type, "", "%s%s", "-->", vbuffer);
-    cw_manage[CP_SHOW_WIN].update_handler();
+    if(vbuffer) {
+        insert_msg_list(type, "", "%s%s", "-->", vbuffer);
+        cw_manage[CP_SHOW_WIN].update_handler();
 
-    free(vbuffer);
+        free(vbuffer);
+    }
 }
 
 int cp_connect_server(int try_type)
@@ -273,15 +275,17 @@ void insert_info_list(const char *info, ...)
 
     cp_va_format(info);
 
-    node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
-    strcpy(node->message, vbuffer);
+    if(vbuffer) {
+        node = (struct info_list_node *)malloc(sizeof(struct info_list_node));
+        strcpy(node->message, vbuffer);
 
-    pthread_mutex_lock(&info_list_lock);
-    list_add(&node->list, &info_list);
-    info_count++;
-    pthread_mutex_unlock(&info_list_lock);
+        pthread_mutex_lock(&info_list_lock);
+        list_add(&node->list, &info_list);
+        info_count++;
+        pthread_mutex_unlock(&info_list_lock);
 
-    free(vbuffer);
+        free(vbuffer);
+    }
 }
 
 void clear_info_list()
@@ -406,30 +410,32 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
 
     cp_va_format(msg);
 
-    scroll_index = 0;
+    if(vbuffer) {
+        scroll_index = 0;
 
-    node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
-    node->type = msg_type;
-    current_time();
-    strcpy(node->time, time_buf);
-    strcpy(node->id, usr_id);
-    strcpy(node->message, vbuffer);
+        node = (struct msg_list_node *)malloc(sizeof(struct msg_list_node));
+        node->type = msg_type;
+        current_time();
+        strcpy(node->time, time_buf);
+        strcpy(node->id, usr_id);
+        strcpy(node->message, vbuffer);
 
-    pthread_mutex_lock(&msg_list_lock);
-    list_add(&node->list, &msg_list);
-    /* full message count, delete the oldest node */
-    if(msg_count >= MAX_MSG_COUNT) {
-        list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
-            list_del(&dnode->list);
-            free(dnode);
-            break;
+        pthread_mutex_lock(&msg_list_lock);
+        list_add(&node->list, &msg_list);
+        /* full message count, delete the oldest node */
+        if(msg_count >= MAX_MSG_COUNT) {
+            list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
+                list_del(&dnode->list);
+                free(dnode);
+                break;
+            }
+        } else {
+            msg_count++;
         }
-    } else {
-        msg_count++;
-    }
-    pthread_mutex_unlock(&msg_list_lock);
+        pthread_mutex_unlock(&msg_list_lock);
 
-    free(vbuffer);
+        free(vbuffer);
+    }
 }
 
 void clear_msg_list()
@@ -946,10 +952,12 @@ void cp_log_ui(int type, char *log, ...)
 {
     cp_va_format(log);
 
-    cp_log(vbuffer);
-    cp_log_print(type, vbuffer);
+    if(vbuffer) {
+        cp_log(vbuffer);
+        cp_log_print(type, vbuffer);
 
-    free(vbuffer);
+        free(vbuffer);
+    }
 }
 
 void cp_logout()
