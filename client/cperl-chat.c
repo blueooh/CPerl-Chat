@@ -1275,23 +1275,23 @@ void parse_option(char *buff)
         return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
-        cp_exit();
-        return;
+	cp_exit();
+	return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_LINE, true)) {
-	    int result;
-            cp_log_ui(MSG_ERROR_STATE,"CP_OPT_LINE"); 
-	    argv_parse = strtok(buff, EXEC_DELIM);
-	    argv_parse = strtok(NULL, EXEC_DELIM);
+	int result;
+	argv_parse = strtok(buff, EXEC_DELIM);
+	argv_parse = strtok(NULL, EXEC_DELIM);
 
-	    if(argv_parse) {
-		    line_count = atoi(argv_parse); 
-	    }
-	    result = msg_list_rearrange();
-	    //cp_exit();
-	    return;
+	if(argv_parse) {
+	    line_count = atoi(argv_parse); 
+	}
+	result = msg_list_rearrange();
+	cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count); 
+
+	return;
     } else {
-	    cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
-        return;
+	cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
+	return;
     } 
 }
