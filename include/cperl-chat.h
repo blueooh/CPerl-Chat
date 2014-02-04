@@ -45,6 +45,9 @@
 #define OPTION_CHAR '/'
 #define MAXINTERFACES 20
 #define MAX_MSG_COUNT 100
+/* line count */
+#define DEFAULT_MSG_COUNT 100
+unsigned int line_count;
 
 typedef void (*cb_update)(void);
 
@@ -65,6 +68,7 @@ typedef enum cp_option_type {
     CP_OPT_CLEAR,
     CP_OPT_REFRESH,
     CP_OPT_EXIT,
+    CP_OPT_LINE,
     CP_OPT_MAX,
 }option_type;
 
@@ -168,4 +172,5 @@ int cp_sock_option();
 void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
 void parse_option(char *buff);
+int msg_list_rearrange();
 #endif
