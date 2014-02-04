@@ -426,7 +426,6 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
         pthread_mutex_lock(&msg_list_lock);
         list_add(&node->list, &msg_list);
         /* full message count, delete the oldest node */
-        //if(msg_count >= MAX_MSG_COUNT) {
         if(msg_count >= line_count) {
             list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
                 list_del(&dnode->list);
