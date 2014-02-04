@@ -1195,21 +1195,22 @@ void get_input_buffer(char *input_buffer)
 
 int msg_list_rearrange()
 {
-	struct msg_list_node *node, *dnode, *tnode;
+    struct msg_list_node *node, *dnode, *tnode;
 
-	pthread_mutex_lock(&msg_list_lock);
-	if(msg_count >= line_count) {
-		list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
-			list_del(&dnode->list);
-			free(dnode);
-			msg_count--;
-			if(msg_count <= line_count){
-				break;
-			}
-		}
-	}	
-	pthread_mutex_unlock(&msg_list_lock);
-	return 0;//success
+    pthread_mutex_lock(&msg_list_lock);
+    if(msg_count >= line_count) {
+	list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
+	    list_del(&dnode->list);
+	    free(dnode);
+	    msg_count--;
+	    if(msg_count <= line_count){
+		break;
+	    }
+	}
+    }	
+    pthread_mutex_unlock(&msg_list_lock);
+
+    return 0; 
 }
 
 void parse_option(char *buff) 
@@ -1278,17 +1279,24 @@ void parse_option(char *buff)
 	return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_LINE, true)) {
-	int result;
+	unsigned int result, tmp_line_count;
 	argv_parse = strtok(buff, EXEC_DELIM);
 	argv_parse = strtok(NULL, EXEC_DELIM);
 
 	if(argv_parse) {
-	    line_count = atoi(argv_parse); 
-	}
-	result = msg_list_rearrange();
-	cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count); 
+	    tmp_line_count = atoi(argv_parse);
 
+	    if(tmp_line_count < MIN_MSG_COUNT || tmp_line_count > MAX_MSG_COUNT) {
+		cp_log_ui(MSG_ERROR_STATE,"invalid count, Max msg count : 500, Min msg count : 100");
+		return; 
+	    } else {
+		line_count = tmp_line_count; 
+		result = msg_list_rearrange();
+		cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count);
+	    } 
+	}
 	return;
+
     } else {
 	cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
 	return;

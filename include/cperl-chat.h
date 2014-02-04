@@ -44,8 +44,9 @@
 
 #define OPTION_CHAR '/'
 #define MAXINTERFACES 20
-#define MAX_MSG_COUNT 100
 /* line count */
+#define MIN_MSG_COUNT 100
+#define MAX_MSG_COUNT 500
 #define DEFAULT_MSG_COUNT 100
 unsigned int line_count;
 
