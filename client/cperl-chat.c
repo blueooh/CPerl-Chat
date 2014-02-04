@@ -18,6 +18,7 @@ struct cp_chat_options options[] = {
     {CP_OPT_CLEAR, "clear", 5, "/clear [no argument]: Clear messages in show window"},
     {CP_OPT_REFRESH, "refresh", 6, "F5 Key terminal UI refresh"},
     {CP_OPT_EXIT, "exit", 4, "/exit [no argument]: Exit program"},
+    {CP_OPT_LINE, "line", 4, "/line [no argument]: default line 100"}
 };
 
 pthread_mutex_t msg_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -54,6 +55,8 @@ int main(int argc, char *argv[])
     cp_log("start cperl-chat...");
 
     cp_create_win();
+
+    line_count = DEFAULT_MSG_COUNT;
 
     thr_id = pthread_create(&info_win_pthread, NULL, info_win_thread, NULL);
     if(thr_id < 0) {
@@ -423,7 +426,8 @@ void insert_msg_list(int msg_type, char *usr_id, const char *msg, ...)
         pthread_mutex_lock(&msg_list_lock);
         list_add(&node->list, &msg_list);
         /* full message count, delete the oldest node */
-        if(msg_count >= MAX_MSG_COUNT) {
+        //if(msg_count >= MAX_MSG_COUNT) {
+        if(msg_count >= line_count) {
             list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
                 list_del(&dnode->list);
                 free(dnode);
@@ -1190,6 +1194,25 @@ void get_input_buffer(char *input_buffer)
     }
 }
 
+int msg_list_rearrange()
+{
+	struct msg_list_node *node, *dnode, *tnode;
+
+	pthread_mutex_lock(&msg_list_lock);
+	if(msg_count >= line_count) {
+		list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
+			list_del(&dnode->list);
+			free(dnode);
+			msg_count--;
+			if(msg_count <= line_count){
+				break;
+			}
+		}
+	}	
+	pthread_mutex_unlock(&msg_list_lock);
+	return 0;//success
+}
+
 void parse_option(char *buff) 
 {
     char *cur_opt;
@@ -1255,8 +1278,20 @@ void parse_option(char *buff)
         cp_exit();
         return;
 
+    } else if(cp_option_check(cur_opt, CP_OPT_LINE, true)) {
+	    int result;
+            cp_log_ui(MSG_ERROR_STATE,"CP_OPT_LINE"); 
+	    argv_parse = strtok(buff, EXEC_DELIM);
+	    argv_parse = strtok(NULL, EXEC_DELIM);
+
+	    if(argv_parse) {
+		    line_count = atoi(argv_parse); 
+	    }
+	    result = msg_list_rearrange();
+	    //cp_exit();
+	    return;
     } else {
-        cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
+	    cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
         return;
     } 
 }
