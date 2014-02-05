@@ -125,7 +125,7 @@ int cp_connect_server(int try_type)
         if(sock)
             close(sock);
     }
-    
+
     clear_usr_list();
     cw_manage[CP_ULIST_WIN].update_handler();
 
@@ -236,7 +236,7 @@ void *rcv_thread(void *data) {
                         cp_logout();
 
                     } else {
-                       cp_rcv_proc(&ms); 
+                        cp_rcv_proc(&ms); 
                     }
                 }
 
@@ -1173,7 +1173,6 @@ void get_input_buffer(char *input_buffer)
             /* if _c >= 0, regard for 1byte char or ascii char however if not, it is multi-bytes 
              * this time char should be considered with en/de-coding type. but that is not considered yet. */
             if(_c >= 0) {
-                /* 1byte or ascii char */
                 _char[0] = _c;
                 _char[1] = '\0';
                 mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor, _char);
@@ -1199,13 +1198,13 @@ void msg_list_rearrange()
 
     pthread_mutex_lock(&msg_list_lock);
     list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
-	if(msg_count <= line_count) {
-	    break;
-	}
+        if(msg_count <= line_count) {
+            break;
+        }
 
-	list_del(&dnode->list);
-	free(dnode);
-	msg_count--;
+        list_del(&dnode->list);
+        free(dnode);
+        msg_count--;
     }
     pthread_mutex_unlock(&msg_list_lock);
     return;
@@ -1273,30 +1272,30 @@ void parse_option(char *buff)
         return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_EXIT, false)) {
-	cp_exit();
-	return;
+        cp_exit();
+        return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_LINE, true)) {
-	unsigned int tmp_line_count;
-	argv_parse = strtok(buff, EXEC_DELIM);
-	argv_parse = strtok(NULL, EXEC_DELIM);
+        unsigned int tmp_line_count;
+        argv_parse = strtok(buff, EXEC_DELIM);
+        argv_parse = strtok(NULL, EXEC_DELIM);
 
-	if(argv_parse) {
-	    tmp_line_count = atoi(argv_parse);
+        if(argv_parse) {
+            tmp_line_count = atoi(argv_parse);
 
-	    if(tmp_line_count < MIN_MSG_COUNT || tmp_line_count > MAX_MSG_COUNT) {
-		cp_log_ui(MSG_ERROR_STATE,"invalid count, Max msg count : 500, Min msg count : 100");
-		return; 
-	    } else {
-		line_count = tmp_line_count; 
-		msg_list_rearrange();
-		cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count);
-	    } 
-	}
-	return;
+            if(tmp_line_count < MIN_MSG_COUNT || tmp_line_count > MAX_MSG_COUNT) {
+                cp_log_ui(MSG_ERROR_STATE,"invalid count, Max msg count : 500, Min msg count : 100");
+                return; 
+            } else {
+                line_count = tmp_line_count; 
+                msg_list_rearrange();
+                cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count);
+            } 
+        }
+        return;
 
     } else {
-	cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
-	return;
+        cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
+        return;
     } 
 }
