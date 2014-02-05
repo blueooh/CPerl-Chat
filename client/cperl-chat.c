@@ -1198,16 +1198,15 @@ void msg_list_rearrange()
     struct msg_list_node *node, *dnode, *tnode;
 
     pthread_mutex_lock(&msg_list_lock);
-    if(msg_count >= line_count) {
-	list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
-	    list_del(&dnode->list);
-	    free(dnode);
-	    msg_count--;
-	    if(msg_count <= line_count){
-		break;
-	    }
+    list_for_each_entry_safe_reverse(dnode, tnode, &msg_list, list) {
+	if(msg_count <= line_count) {
+	    break;
 	}
-    }	
+
+	list_del(&dnode->list);
+	free(dnode);
+	msg_count--;
+    }
     pthread_mutex_unlock(&msg_list_lock);
     return;
 }
