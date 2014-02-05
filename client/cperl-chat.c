@@ -1193,7 +1193,7 @@ void get_input_buffer(char *input_buffer)
     }
 }
 
-int msg_list_rearrange()
+void msg_list_rearrange()
 {
     struct msg_list_node *node, *dnode, *tnode;
 
@@ -1209,8 +1209,7 @@ int msg_list_rearrange()
 	}
     }	
     pthread_mutex_unlock(&msg_list_lock);
-
-    return 0; 
+    return;
 }
 
 void parse_option(char *buff) 
@@ -1279,7 +1278,7 @@ void parse_option(char *buff)
 	return;
 
     } else if(cp_option_check(cur_opt, CP_OPT_LINE, true)) {
-	unsigned int result, tmp_line_count;
+	unsigned int tmp_line_count;
 	argv_parse = strtok(buff, EXEC_DELIM);
 	argv_parse = strtok(NULL, EXEC_DELIM);
 
@@ -1291,7 +1290,7 @@ void parse_option(char *buff)
 		return; 
 	    } else {
 		line_count = tmp_line_count; 
-		result = msg_list_rearrange();
+		msg_list_rearrange();
 		cp_log_ui(MSG_ERROR_STATE,"Change the linelist : %d",line_count);
 	    } 
 	}
