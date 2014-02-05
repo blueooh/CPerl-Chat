@@ -173,5 +173,5 @@ int cp_sock_option();
 void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
 void parse_option(char *buff);
-int msg_list_rearrange();
+void msg_list_rearrange();
 #endif
