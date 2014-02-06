@@ -1350,7 +1350,7 @@ char *msg_build(const char *inbuff, const int inbuff_size)
 
         if(inbuff[inpos] == '%') {
             if(++built_buff_len <= MESSAGE_BUFFER_SIZE) {
-                built = (char *)realloc(built, ++built_buff_len);
+                built = (char *)realloc(built, built_buff_len);
 
                 if(!built) {
                     goto out;
