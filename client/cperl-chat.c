@@ -1030,7 +1030,7 @@ void cp_rcv_proc(msgst *ms)
     }
 
     // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-    insert_msg_list(ms->state, ms->id, message_buf);
+    insert_msg_list(ms->state, ms->id, "%s", message_buf);
     cw_manage[CP_SHOW_WIN].update_handler();
     wrefresh(cw_manage[CP_CHAT_WIN].win);
 }
