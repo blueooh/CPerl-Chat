@@ -917,13 +917,30 @@ void first_scr_ui()
     mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 - 1, time_msg_scr);
     mvwprintw(stdscr, term_y/2 + 4, (term_x - strlen(srv_name_scr))/2 + 12, current_time_scr);
 
-    //커서를 맨앞으로 이동
-    wmove(stdscr, term_y/2, ((term_x - strlen(first_scr))/2) + strlen(first_scr) + 1);
-    // 아이디 값을 받아서 저장
-    getstr(id);
-    //커서를 맨앞으로 이동
-    wmove(stdscr, term_y/2 + 2, ((term_x - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
-    getstr(srvname);
+    while(1) {
+        wmove(stdscr, term_y/2, ((term_x - strlen(first_scr))/2) + strlen(first_scr) + 1);
+        getnstr(id, ID_SIZE);
+        if(!strlen(id)) {
+            wattron(stdscr, COLOR_PAIR(3));
+            mvwprintw(stdscr, term_y/2 + 6, (term_x - strlen(srv_name_scr))/2 - 1, "ID's length sholud be from 1 to 50");
+            wattroff(stdscr, COLOR_PAIR(3));
+            continue;
+        }   
+        break;
+    }
+    wmove(stdscr, term_y/2 + 6, (term_x - strlen(srv_name_scr))/2 - 1);
+    wclrtobot(stdscr);
+    while(1) {
+        wmove(stdscr, term_y/2 + 2, ((term_x - strlen(srv_name_scr))/2 - 1) + strlen(srv_name_scr) +1);
+        getnstr(srvname, SERVER_NAME_SIZE);
+        if(!strlen(srvname)){
+            wattron(stdscr, COLOR_PAIR(3));
+            mvwprintw(stdscr, term_y/2 + 6, (term_x - strlen(srv_name_scr))/2 - 1, "Server name's length sholud be more 1");
+            wattroff(stdscr, COLOR_PAIR(3));
+            continue;
+        }
+        break;
+    }
 }
 
 void cp_create_win()
