@@ -740,6 +740,7 @@ void update_chat_win()
 
     werase(win);
     draw_win_ui(win, cw_manage[CP_CHAT_WIN].ui);
+    wmove(win, 1, 1);
 }
 
 void resize_handler(int sig)
@@ -1160,7 +1161,7 @@ void get_input_buffer(char *input_buffer)
             set_scroll_index(SCROLL_DOWN);
             cw_manage[CP_SHOW_WIN].update_handler();
 
-        } else if (ch == KEY_BACKSPACE) {
+        } else if(ch == KEY_BACKSPACE) {
             if(cursor <= 1 || buf_idx <= 0) {
                 /* if cursor or buffer index is zero or minus index, 
                  * init index and cursor */
@@ -1183,6 +1184,9 @@ void get_input_buffer(char *input_buffer)
             cw_manage[CP_CHAT_WIN].update_handler();
             mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
 
+        } else if(ch == 410) {
+            /* exception char */
+            continue;
         } else {
             /* char inputed store to buffer */
             buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
