@@ -75,26 +75,35 @@ int main(int argc, char *argv[])
 
     while(1) {
         msgst ms;
-        char str[MESSAGE_BUFFER_SIZE];
+        char str[MESSAGE_BUFFER_SIZE], *built_str;
+        int str_size = 0;
 
         str[0] = '\0';
         cw_manage[CP_CHAT_WIN].update_handler();
         get_input_buffer(str);
 
-        if(!strlen(str)) 
+        if(!(str_size = strlen(str))) 
             continue;
 
+        built_str = msg_build(str, str_size);
+        if(!built_str){
+            continue;
+        }
+
         if(str[0] == OPTION_CHAR) {
-            parse_option(str);
+            parse_option(built_str);
         } else {
             if(usr_state == USER_LOGIN_STATE) {
                 ms.state = MSG_DATA_STATE;
                 strcpy(ms.id, id);
-                strcpy(ms.message, str);
+                strcpy(ms.message, built_str);
                 if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
                     cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
                 }
             }
+        }
+        if(built_str) {
+            free(built_str);
         }
     }
 
@@ -1319,4 +1328,46 @@ void parse_option(char *buff)
         cp_log_ui(MSG_ERROR_STATE, "invalid options: %s", cur_opt);
         return;
     } 
+}
+
+char *msg_build(const char *inbuff, const int inbuff_size)
+{
+    int inpos = 0, outpos = 0, built_buff_len = inbuff_size + 1;
+    char *built;
+
+    built = (char *)malloc(built_buff_len);
+    if(!built) {
+        return NULL;
+    }
+    
+    while((inpos < inbuff_size) || 
+            (inbuff[inpos] != '\0')) {
+
+        if(inbuff[inpos] == '%') {
+            if(++built_buff_len <= MESSAGE_BUFFER_SIZE) {
+                built = (char *)realloc(built, ++built_buff_len);
+
+                if(!built) {
+                    goto out;
+                }
+
+            } else {
+                goto out;
+            }
+
+            built[outpos++] = '%';
+            built[outpos] = '%';
+
+        } else {
+            built[outpos] = inbuff[inpos];
+        }
+
+        inpos++;
+        outpos++;
+    }
+
+out:
+    built[outpos] = '\0';
+
+    return built;
 }

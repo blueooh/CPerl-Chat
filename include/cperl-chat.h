@@ -174,4 +174,5 @@ void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
 void parse_option(char *buff);
 void msg_list_rearrange();
+char *msg_build(const char *inbuff, const int inbuff_size);
 #endif
