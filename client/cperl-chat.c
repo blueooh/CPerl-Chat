@@ -1133,11 +1133,13 @@ int cp_sock_option()
 void get_input_buffer(char *input_buffer)
 {
     MEVENT event;
-    int ch, cursor = 1, buf_idx = 0, bytes = 0;
+    int ch, cursor = 1, cursor_end, buf_idx = 0, bytes = 0;
     char _c, _char[100];
 
     while(1) {
         wrefresh(cw_manage[CP_CHAT_WIN].win);
+
+        cursor_end = cw_manage[CP_CHAT_WIN].ui.cols - 2;
         _c = ch = mvwgetch(cw_manage[CP_CHAT_WIN].win, 1, cursor);
 
         if(ch == KEY_F(5)) {
@@ -1197,6 +1199,9 @@ void get_input_buffer(char *input_buffer)
             /* exception char */
             continue;
         } else {
+            if(cursor >= cursor_end) {
+                continue;
+            }
             /* char inputed store to buffer */
             buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
 
