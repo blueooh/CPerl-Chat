@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     initscr();
     raw();
     start_color();
+    use_default_colors();
     // cperl-chat init
     cp_init_chat();
     // 첫 실행 화면
@@ -858,11 +859,11 @@ void cp_init_chat()
 
     mousemask(BUTTON1_CLICKED|BUTTON4_PRESSED|BUTTON2_PRESSED, NULL);
 
-    init_pair(1, COLOR_WHITE, COLOR_BLACK);
-    init_pair(2, COLOR_GREEN, COLOR_BLACK);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
-    init_pair(4, COLOR_CYAN, COLOR_BLACK);
-    init_pair(5, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(1, COLOR_WHITE, -1);
+    init_pair(2, COLOR_GREEN, -1);
+    init_pair(3, COLOR_RED, -1);
+    init_pair(4, COLOR_CYAN, -1);
+    init_pair(5, COLOR_YELLOW, -1);
 
     INIT_LIST_HEAD(&msg_list);
     INIT_LIST_HEAD(&info_list);
