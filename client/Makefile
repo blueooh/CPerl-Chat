@@ -1,5 +1,5 @@
 TARGET=cperl-chat
-INCS=-I../include -I/usr/include/libgtop-2.0 -I/usr/include/glib-2.0
+INCS=-I../include -I/usr/include/libgtop-2.0 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include/
 OBJS=cperl-chat.o ../module/cp-list.o ../module/cp-log.o
 CC=-g -c
 LIB=-lncursesw -lgtop-2.0 -lglib-2.0 -lpthread
