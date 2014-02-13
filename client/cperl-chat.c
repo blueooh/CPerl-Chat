@@ -202,10 +202,7 @@ void *rcv_thread(void *data) {
                 break;
 
             case 0:
-                ms.state = MSG_AVAILTEST_STATE;
-                if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-                    cp_log_ui(MSG_ERROR_STATE, "%s: %d", strerror(errno), errno);
-                }
+                cp_send_data(MSG_AVAILTEST_STATE, id, "");
                 break;
 
             default:
@@ -1380,7 +1377,7 @@ int cp_send_data(int type, char *id, char *data)
     strcpy(pkt.message, data);
 
     if((len = write(sock, (char *)&pkt, sizeof(pkt))) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), send_type(%d)", strerror(errno), errno, type);
         return errno;
     }
 
