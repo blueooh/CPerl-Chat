@@ -220,20 +220,19 @@ int cp_unicast_message(int sock, int state, char *data, ...)
 
 int cp_boradcast_message(msgst *packet)
 {
-    int hash, ret = 0;
+    int hash, len = 0;
     struct user_list_node *node;
 
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
-            if(ret = write(node->data.sock, (char *)packet, sizeof(*packet)) < 0) {
+            if(len = write(node->data.sock, (char *)packet, sizeof(*packet)) < 0) {
                 cp_log("broadcast socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
                         node->data.id, node->data.sock, errno, strerror(errno));
-                return ret;
             }
         }
     }
 
-    return ret;
+    return len;
 }
 
 int init_epoll()
