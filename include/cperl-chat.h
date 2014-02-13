@@ -1,6 +1,7 @@
 #ifndef __CPERL_CHAT_H__
 #define __CPERL_CHAT_H__
 
+#include <cp-version.h>
 #include <cp-motd.h>
 #include <cp-va_format.h>
 #include <cp-list.h>
@@ -168,8 +169,9 @@ void cp_create_win();
 void cp_logout();
 void cp_exit();
 void cp_rcv_proc(msgst *ms);
-void init_usr_list();
 int cp_sock_option();
+int cp_send_data(int type, char *id, char *data);
+void init_usr_list();
 void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
 void parse_option(char *buff);

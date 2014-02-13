@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     clear();
     refresh();
 
-    cp_log("start cperl-chat...");
+    cp_log("start cperl-chat version %s", cp_version);
 
     cp_create_win();
 
@@ -75,7 +75,6 @@ int main(int argc, char *argv[])
     }
 
     while(1) {
-        msgst ms;
         char str[MESSAGE_BUFFER_SIZE], *built_str;
         int str_size = 0;
 
@@ -95,12 +94,7 @@ int main(int argc, char *argv[])
             parse_option(built_str);
         } else {
             if(usr_state == USER_LOGIN_STATE) {
-                ms.state = MSG_DATA_STATE;
-                strcpy(ms.id, id);
-                strcpy(ms.message, built_str);
-                if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-                    cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
-                }
+                cp_send_data(MSG_DATA_STATE, id, built_str); 
             }
         }
         if(built_str) {
@@ -128,7 +122,7 @@ int cp_connect_server(int try_type)
     struct sockaddr_in srv_addr;
     struct hostent *entry;
     char *resolved_host;
-    int thr_id;
+    int thr_id, ret;
     msgst ms;
 
     if(try_type == MSG_RECONNECT_STATE) {
@@ -180,10 +174,7 @@ int cp_connect_server(int try_type)
 
     // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
     // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
-    ms.state = try_type;
-    strcpy(ms.id, id);
-    if(write(sock, (char *)&ms, sizeof(msgst)) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
+    if((ret = cp_send_data(try_type, id, "")) < 0) {
         cp_logout();
     }
 
@@ -1376,4 +1367,22 @@ out:
     built[outpos] = '\0';
 
     return built;
+}
+
+int cp_send_data(int type, char *id, char *data)
+{
+    int len;
+    msgst pkt;
+
+    strcpy(pkt.version, cp_version);
+    pkt.state = type;
+    strcpy(pkt.id, id);
+    strcpy(pkt.message, data);
+
+    if((len = write(sock, (char *)&pkt, sizeof(pkt))) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d)", strerror(errno), errno);
+        return errno;
+    }
+
+    return len;
 }

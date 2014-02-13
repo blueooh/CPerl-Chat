@@ -9,6 +9,7 @@
 #define SERVER_NAME_SIZE 30
 #define TIME_BUFFER_SIZE 11
 #define ID_SIZE 50
+#define VERSION_SIZE 10
 #define MESSAGE_BUFFER_SIZE 512
 #define FILE_NAME_MAX 255
 #define FILE_PATH_MAX 4096
@@ -34,6 +35,7 @@ enum {
 };
 
 typedef struct message_st {
+    char version[VERSION_SIZE];
     unsigned int state;
     char id[ID_SIZE];
     char message[MESSAGE_BUFFER_SIZE];
@@ -48,6 +50,4 @@ inline unsigned int hash_func(char *s)
 
     return hashval % USER_HASH_SIZE;
 }
-
-
 #endif

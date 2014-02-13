@@ -9,7 +9,7 @@ int cp_init_log(const char * file)
         return -1;
     }
 
-    return log_fd;
+    return 0;
 }
 
 int cp_log(char *buf, ...)

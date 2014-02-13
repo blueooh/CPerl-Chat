@@ -11,7 +11,7 @@ $(TARGET): $(OBJS)
 .c.o:
 	gcc $(CC) $(INCS) $<
 
-cperl-chat.o: cperl-chat.c ../include/cperl-chat.h ../include/cp-common.h ../include/cp-motd.h
+cperl-chat.o: cperl-chat.c ../include/cperl-chat.h ../include/cp-common.h ../include/cp-motd.h ../include/cp-version.h
 
 dep:
 	gccmakedep $(INCS) $(SRCS)
