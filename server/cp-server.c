@@ -272,7 +272,7 @@ int create_listen_socket()
     if (listen_sock < 0)
     {
         cp_log("listen socket error : %s, errno(%d)", strerror(errno), errno);
-        return errno;
+        return -1;
     }
     addr.sin_family = AF_INET;
     addr.sin_port = htons(atoi(SERVER_PORT));
@@ -281,12 +281,12 @@ int create_listen_socket()
     {
         close(listen_sock);
         cp_log("listen socke bind error:%s, errno(%d)", strerror(errno), errno);
-        return errno;
+        return -1;
     }
 
     if(listen(listen_sock, 5) < 0) {
         cp_log("listen error:%s, errno(%d)", strerror(errno), errno);
-        return errno;
+        return -1;
     }
 
     return listen_sock;
