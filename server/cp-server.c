@@ -87,35 +87,33 @@ struct user_list_node *exist_usr_list(ud data)
     return NULL;
 }
 
-int new_connect_proc(ud data)
+int new_connect_proc(int sock, msgst *packet)
 {
     struct user_list_node *node;
     int hash, idx = 0;
-    msgst packet;
+    ud data;
+    msgst noti_packet;
+    char usr_list_buf[MESSAGE_BUFFER_SIZE];
 
+    if(cp_version_compare(packet->version, cp_version) < 0) {
+        cp_unicast_message(sock, MSG_ALAM_STATE, 
+                "version compare fail, update your cperl-chat version == %s", cp_version);
+        close_user(sock);
+        return -1;
+    }
+
+    data.sock = sock;
+    strcpy(data.id, packet->id);
     insert_usr_list(data);
 
-    packet.state = MSG_USERLIST_STATE;
-    get_all_user_list(packet.message, sizeof(msgst));
-    if(write(data.sock, (char *)&packet, sizeof(msgst)) < 0) {
-        cp_log("send user list socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
-                data.id, data.sock, errno, strerror(errno));
-        return 0;
-    }
+    get_all_user_list(usr_list_buf, sizeof(usr_list_buf));
+    cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buf);
 
-    packet.state = MSG_NEWUSER_STATE;
-    strcpy(packet.id, data.id);
-    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-        list_for_each_entry(node, &usr_list[hash], list) {
-            if(write(node->data.sock, (char *)&packet, sizeof(msgst)) < 0) {
-                cp_log("send new user to all socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
-                        node->data.id, node->data.sock, errno, strerror(errno));
-                return 0;
-            }
-        }
-    }
+    noti_packet.state = MSG_NEWUSER_STATE;
+    strcpy(noti_packet.id, packet->id);
+    cp_broadcast_message(&noti_packet);
 
-    return 1;
+    return 0;
 }
 
 int get_all_user_list(char *buff, int size)
@@ -156,7 +154,7 @@ int close_user(int fd)
         delete_usr_list(user_data);
         snd_ms.state = MSG_DELUSER_STATE;
         strcpy(snd_ms.id, user_data.id);
-        cp_boradcast_message(&snd_ms);
+        cp_broadcast_message(&snd_ms);
 
     } else {
         cp_log("cannot fond user, anyway force close: sock(%d)", fd);
@@ -167,11 +165,16 @@ int close_user(int fd)
     return close(fd);
 }
 
-int reconnect_proc(ud user_data)
+int reconnect_proc(int sock, msgst *packet)
 {
     int ret = 0;
     struct user_list_node *node;
-    msgst packet;
+    msgst noti_packet;
+    char usr_list_buff[MESSAGE_BUFFER_SIZE];
+    ud user_data;
+
+    user_data.sock = sock;
+    strcpy(user_data.id, packet->id);
 
     if(node = exist_usr_list(user_data)) {
         /* if user exists in hash table, update sock fd */
@@ -180,17 +183,14 @@ int reconnect_proc(ud user_data)
         node->data.sock = user_data.sock;
         cp_log("user socket changed: user-id(%s), sock(%d)", node->data.id, node->data.sock);
 
-        packet.state = MSG_USERLIST_STATE;
-        get_all_user_list(packet.message, sizeof(msgst));
-        if(ret  = write(user_data.sock, (char *)&packet, sizeof(msgst)) < 0) {
-            cp_log("send user list socket error: user(%s), errno(%d), strerror(%s)", 
-                    user_data.id, errno, strerror(errno));
-            return ret;
-        }
+        noti_packet.state = MSG_USERLIST_STATE;
+        get_all_user_list(usr_list_buff, sizeof(usr_list_buff));
+        cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buff);
+
     } else {
         cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", user_data.id, user_data.sock);
         /* If user not exsits in hash table, process new connection */
-        new_connect_proc(user_data);
+        new_connect_proc(sock, packet);
     }
 
     return ret;
@@ -211,14 +211,14 @@ int cp_unicast_message(int sock, int state, char *data, ...)
         if(len = write(sock, (char *)&packet, sizeof(packet)) < 0) {
             cp_log("unicast socket error: sock(%d), errno(%d), strerror(%s)", 
                     sock, errno, strerror(errno));
-            return errno;
+            return -1;
         }
     }
 
     return len;
 }
 
-int cp_boradcast_message(msgst *packet)
+int cp_broadcast_message(msgst *packet)
 {
     int hash, len = 0;
     struct user_list_node *node;
@@ -358,40 +358,33 @@ int cp_read_user_data(int fd)
         user_data.sock = fd;
         strcpy(user_data.id, rcv_packet.id);
 
-        if(strcmp(rcv_packet.version, cp_version)) {
-            cp_log("version compare fail: cli(%s), srv(%s)", rcv_packet.version, cp_version);
-            cp_unicast_message(fd, MSG_ALAM_STATE, "version compare fail, update your cperl-chat version == %s", cp_version);
-            close_user(fd);
-            return -1;
-        }
-
         switch(rcv_packet.state) {
             case MSG_RECONNECT_STATE:
                 cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", 
-                        user_data.id, user_data.sock);
-                reconnect_proc(user_data);
+                        rcv_packet.id, fd);
+                reconnect_proc(fd, &rcv_packet);
                 break;
 
             case MSG_NEWCONNECT_STATE:
                 if(exist_usr_list(user_data)) {
                     cp_log("new connect user id exists, force to close...: user-id(%s)", 
-                            user_data.id);
+                            rcv_packet.id);
                     cp_unicast_message(user_data.sock, MSG_ALAM_STATE, 
                             "ID Exists already, re-connect to server after change your ID!");
-                    epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
-                    close(user_data.sock);
+                    epoll_ctl(efd, EPOLL_CTL_DEL, fd, events);
+                    close(fd);
                     break;
 
                 } else {
                     cp_log("log-in user: ver(%s), id(%s), sock(%d)", 
                             rcv_packet.version, rcv_packet.id, user_data.sock);
-                    new_connect_proc(user_data);
+                    new_connect_proc(fd, &rcv_packet);
                 }
                 break;
 
             case MSG_DATA_STATE:
                 /* broadcast packet to all user */
-                cp_boradcast_message(&rcv_packet);
+                cp_broadcast_message(&rcv_packet);
                 break;
 
             case MSG_AVAILTEST_STATE:
@@ -403,4 +396,14 @@ int cp_read_user_data(int fd)
     }
 
     return readn;
+}
+
+int cp_version_compare(const char *cli_ver, const char *srv_ver)
+{
+    if(strcmp(cli_ver, srv_ver)) {
+        cp_log("version compare fail: cli(%s), srv(%s)", cli_ver, srv_ver);
+        return -1;
+    }
+
+    return 0;
 }

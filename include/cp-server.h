@@ -42,13 +42,14 @@ int init_epoll();
 struct user_list_node *insert_usr_list(ud data);
 void delete_usr_list(ud data);
 struct user_list_node *exist_usr_list(ud data);
-int new_connect_proc(ud data);
+int new_connect_proc(int sock, msgst *packet);
 int get_all_user_list(char *buff, int size);
 int close_user(int fd);
-int reconnect_proc(ud user_data);
+int reconnect_proc(int sock, msgst *packet);
 int cp_unicast_message(int sock, int state, char *data, ...);
 int cp_broadcast_message(msgst *packet);
 void cp_server_main_loop();
 int cp_accept();
 int cp_read_user_data(int fd);
+int cp_version_compare(const char *cli_ver, const char *srv_ver);
 #endif
