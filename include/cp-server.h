@@ -1,6 +1,7 @@
 #ifndef __CP_SERVER_H__
 #define __CP_SERVER_H__
 
+#include <cp-version.h>
 #include <cp-list.h>
 #include <cp-log.h>
 #include <cp-common.h>
@@ -18,7 +19,7 @@
 #include <errno.h>
 
 #ifdef TEST
-#define SERVER_PORT "8889"
+#define SERVER_PORT "8888"
 #else
 #define SERVER_PORT "8888"
 #endif
@@ -36,9 +37,18 @@ struct user_list_node {
 };
 
 void init_usr_list();
+int create_listen_socket();
+int init_epoll();
 struct user_list_node *insert_usr_list(ud data);
 void delete_usr_list(ud data);
 struct user_list_node *exist_usr_list(ud data);
 int new_connect_proc(ud data);
 int get_all_user_list(char *buff, int size);
+int close_user(int fd);
+int reconnect_proc(ud user_data);
+int cp_unicast_message(int sock, int state, char *data, ...);
+int cp_broadcast_message(msgst *packet);
+void cp_server_main_loop();
+int cp_accept();
+int cp_read_user_data(int fd);
 #endif
