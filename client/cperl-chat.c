@@ -1122,8 +1122,8 @@ int cp_sock_option()
 void get_input_buffer(char *input_buffer)
 {
     MEVENT event;
-    int ch, cursor = 1, cursor_end, buf_idx = 0, bytes = 0;
-    char _c, _char[100];
+    int ch, cursor = 1, cursor_end, buf_idx = 0, bytes = 0, ch_cnt = 0;
+    char _c;
 
     while(1) {
         wrefresh(cw_manage[CP_CHAT_WIN].win);
@@ -1161,7 +1161,41 @@ void get_input_buffer(char *input_buffer)
             set_scroll_index(SCROLL_DOWN);
             cw_manage[CP_SHOW_WIN].update_handler();
 
+        } else if(ch == KEY_LEFT) {
+            if(cursor <= 1 || buf_idx <= 0) {
+                /* if cursor or buffer index is zero or minus index, 
+                 * init index and cursor */
+                cursor = 1;
+                buf_idx = 0;
+                continue;
+            }
+
+            if(input_buffer[buf_idx - 1] < 0) {
+                buf_idx -= 3;
+                cursor -= 2;
+
+            } else {
+                buf_idx -= 1;
+                cursor -= 1;
+            }
+
+        } else if(ch == KEY_RIGHT) {
+            if(cursor > ch_cnt) {
+                continue;
+            }
+
+            if(input_buffer[buf_idx + 1] < 0) {
+                buf_idx += 3;
+                cursor += 2;
+
+            } else {
+                buf_idx += 1;
+                cursor += 1;
+            }
+
         } else if(ch == KEY_BACKSPACE) {
+            char tmp_buffer[MESSAGE_BUFFER_SIZE];
+
             if(cursor <= 1 || buf_idx <= 0) {
                 /* if cursor or buffer index is zero or minus index, 
                  * init index and cursor */
@@ -1172,13 +1206,19 @@ void get_input_buffer(char *input_buffer)
 
             if(input_buffer[buf_idx - 1] < 0) {
                 /* delete 3 bytes char */
-                input_buffer[buf_idx -= 3] = '\0';
+                strcpy(tmp_buffer, input_buffer + buf_idx);
+                buf_idx -= 3;
+                strcpy(input_buffer + buf_idx, tmp_buffer);
                 cursor -= 2;
+                ch_cnt -= 2;
 
             } else {
                 /* delete 1 bytes char */
-                input_buffer[buf_idx -= 1] = '\0';
+                strcpy(tmp_buffer, input_buffer + buf_idx);
+                buf_idx -= 1;
+                strcpy(input_buffer + buf_idx, tmp_buffer);
                 cursor -= 1;
+                ch_cnt -= 1;
             }
 
             cw_manage[CP_CHAT_WIN].update_handler();
@@ -1188,28 +1228,41 @@ void get_input_buffer(char *input_buffer)
             /* exception char */
             continue;
         } else {
+            char tmp_buffer[MESSAGE_BUFFER_SIZE];
+
             if(cursor >= cursor_end) {
                 continue;
             }
-            /* char inputed store to buffer */
-            buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
 
             /* if _c >= 0, regard for 1byte char or ascii char however if not, it is multi-bytes 
              * this time char should be considered with en/de-coding type. but that is not considered yet. */
             if(_c >= 0) {
-                _char[0] = _c;
-                _char[1] = '\0';
-                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor, _char);
-                cursor += 1;
+                /* string copy after it will be new char */
+                strcpy(tmp_buffer, input_buffer + buf_idx);
+                /* char inputed store to buffer */
+                buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
+                strcat(input_buffer, tmp_buffer);
 
-            } else {
-                /* handle 3bytes char */
-                _char[bytes++] = _c;
-                if(bytes >= 3) {
+                cursor += 1;
+                ch_cnt += 1;
+
+                cw_manage[CP_CHAT_WIN].update_handler();
+                mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
+
+            } else { /* handle 3bytes char */
+                /* string copy after it will be new char */
+                strcpy(tmp_buffer, input_buffer + buf_idx);
+                /* char inputed store to buffer */
+                buf_idx += sprintf(input_buffer + buf_idx, "%c", ch);
+                strcat(input_buffer, tmp_buffer);
+
+                if(++bytes >= 3) {
                     bytes = 0;
-                    _char[3] = '\0';
-                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, cursor, _char);
                     cursor += 2;
+                    ch_cnt += 2;
+
+                    cw_manage[CP_CHAT_WIN].update_handler();
+                    mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
                 }
             }
         }
