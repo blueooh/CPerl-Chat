@@ -77,6 +77,8 @@ typedef enum cp_option_type {
 enum scroll_action {
     SCROLL_UP,
     SCROLL_DOWN,
+    SCROLL_PAGE_UP,
+    SCROLL_PAGE_DOWN,
     SCROLL_NONE,
 };
 

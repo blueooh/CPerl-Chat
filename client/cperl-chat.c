@@ -461,14 +461,24 @@ void set_scroll_index(int action)
             if((msg_count - scroll_index) >= win_line) {
                 scroll_index += 3;
             }
-            //cp_log("scroll up: msg_count(%d), win_line(%d), index(%d)", msg_count, win_line, scroll_index);
             break;
 
         case SCROLL_DOWN:
             if(scroll_index >= 3) {
                 scroll_index -= 3;
             }
-            //cp_log("scroll down: msg_count(%d), win_line(%d), index(%d)", msg_count, win_line, scroll_index);
+            break;
+
+        case SCROLL_PAGE_UP:
+            if((msg_count - scroll_index) >= win_line) {
+                scroll_index += (win_line / 2);
+            }
+            break;
+
+        case SCROLL_PAGE_DOWN:
+            if(scroll_index >= (win_line / 2)) {
+                scroll_index -= (win_line / 2);
+            }
             break;
 
         case SCROLL_NONE:
@@ -1126,6 +1136,8 @@ void get_input_buffer(char *input_buffer)
     char _c;
 
     while(1) {
+        char tmp_buffer[MESSAGE_BUFFER_SIZE];
+
         wrefresh(cw_manage[CP_CHAT_WIN].win);
 
         cursor_end = cw_manage[CP_CHAT_WIN].ui.cols - 2;
@@ -1152,6 +1164,36 @@ void get_input_buffer(char *input_buffer)
         } else if (ch == '\n') {
             /* input end */
             break;
+
+        } else if(ch == 21) {
+            /* Ctrl + u, clear chars from next position of current cursor to all left string */
+            strcpy(tmp_buffer, input_buffer + buf_idx);
+            strcpy(input_buffer, tmp_buffer);
+
+            cursor = 1;
+            buf_idx = 0;
+            ch_cnt = strlen(tmp_buffer);
+
+            cw_manage[CP_CHAT_WIN].update_handler();
+            mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
+
+        } else if(ch == KEY_HOME) {
+            cursor = 1;
+            buf_idx = 0;
+
+        } else if(ch == KEY_END) {
+            cursor = ch_cnt + 1;
+            buf_idx = strlen(input_buffer);
+
+        } else if(ch == KEY_NPAGE) {
+            /* page down */
+            set_scroll_index(SCROLL_PAGE_DOWN);
+            cw_manage[CP_SHOW_WIN].update_handler();
+
+        } else if(ch == KEY_PPAGE) {
+            /* page up */
+            set_scroll_index(SCROLL_PAGE_UP);
+            cw_manage[CP_SHOW_WIN].update_handler();
 
         } else if(ch == KEY_UP) {
             set_scroll_index(SCROLL_UP);
@@ -1194,8 +1236,6 @@ void get_input_buffer(char *input_buffer)
             }
 
         } else if(ch == KEY_BACKSPACE) {
-            char tmp_buffer[MESSAGE_BUFFER_SIZE];
-
             if(cursor <= 1 || buf_idx <= 0) {
                 /* if cursor or buffer index is zero or minus index, 
                  * init index and cursor */
@@ -1228,8 +1268,6 @@ void get_input_buffer(char *input_buffer)
             /* exception char */
             continue;
         } else {
-            char tmp_buffer[MESSAGE_BUFFER_SIZE];
-
             if(cursor >= cursor_end) {
                 continue;
             }
