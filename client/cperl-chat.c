@@ -1167,12 +1167,12 @@ void get_input_buffer(char *input_buffer)
 
         } else if(ch == 21) {
             /* Ctrl + u, clear chars from next position of current cursor to all left string */
+            ch_cnt = ch_cnt - (cursor - 1);
             strcpy(tmp_buffer, input_buffer + buf_idx);
             strcpy(input_buffer, tmp_buffer);
 
             cursor = 1;
             buf_idx = 0;
-            ch_cnt = strlen(tmp_buffer);
 
             cw_manage[CP_CHAT_WIN].update_handler();
             mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
