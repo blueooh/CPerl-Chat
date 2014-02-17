@@ -1213,8 +1213,8 @@ void get_input_buffer(char *input_buffer)
             if(cursor <= 1 || buf_idx <= 0) {
                 /* if cursor or buffer index is zero or minus index, 
                  * init index and cursor */
-                cursor = 1;
                 buf_idx = 0;
+                cursor = 1;
                 continue;
             }
 
@@ -1260,6 +1260,23 @@ void get_input_buffer(char *input_buffer)
                 buf_idx -= 1;
                 strcpy(input_buffer + buf_idx, tmp_buffer);
                 cursor -= 1;
+                ch_cnt -= 1;
+            }
+
+            cw_manage[CP_CHAT_WIN].update_handler();
+            mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
+
+        } else if(ch == KEY_DC) {
+            if(cursor > ch_cnt) {
+                continue;
+            }
+
+            if(input_buffer[buf_idx] < 0) {
+                strcpy(input_buffer + buf_idx, input_buffer + buf_idx + 3);
+                ch_cnt -= 2;
+
+            } else {
+                strcpy(input_buffer + buf_idx, input_buffer + buf_idx + 1);
                 ch_cnt -= 1;
             }
 
