@@ -1226,7 +1226,7 @@ void get_input_buffer(char *input_buffer)
                 continue;
             }
 
-            if(input_buffer[buf_idx + 1] < 0) {
+            if(input_buffer[buf_idx] < 0) {
                 buf_idx += 3;
                 cursor += 2;
 
@@ -1237,10 +1237,6 @@ void get_input_buffer(char *input_buffer)
 
         } else if(ch == KEY_BACKSPACE) {
             if(cursor <= 1 || buf_idx <= 0) {
-                /* if cursor or buffer index is zero or minus index, 
-                 * init index and cursor */
-                cursor = 1;
-                buf_idx = 0;
                 continue;
             }
 
