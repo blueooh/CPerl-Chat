@@ -1131,9 +1131,15 @@ int cp_sock_option()
 
 void get_input_buffer(char *input_buffer)
 {
-    MEVENT event;
-    int ch, cursor = 1, cursor_end, buf_idx = 0, bytes = 0, ch_cnt = 0;
-    char _c;
+    
+    MEVENT event; /* for mouse event */
+    char _c; /* to distinguish 1byte char or multibyte char */
+    int ch, /* intager value gotten from user input device */
+        cursor = 1, /* cursor x position of input window */
+        cursor_end, /* cursor end should be defined by end of input window */
+        buf_idx = 0, /* next position of buffer string end is assigned */
+        bytes = 0, /* count of multi byte char */
+        ch_cnt = 0; /* count of char */
 
     while(1) {
         char tmp_buffer[MESSAGE_BUFFER_SIZE];
