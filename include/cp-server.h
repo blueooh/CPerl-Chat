@@ -21,7 +21,7 @@
 #ifdef TEST
 #define SERVER_PORT "8888"
 #else
-#define SERVER_PORT "8888"
+#define SERVER_PORT "6666"
 #endif
 #define SA  struct sockaddr
 #define EPOLL_SIZE 20
