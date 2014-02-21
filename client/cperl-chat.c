@@ -1143,6 +1143,16 @@ void get_input_buffer(char *input_buffer)
 
     while(1) {
         char tmp_buffer[MESSAGE_BUFFER_SIZE];
+        /*
+        char tmp[MESSAGE_BUFFER_SIZE];
+        int i, idx = 0, len;
+
+        len = strlen(input_buffer);
+        for(i=0; i < len; i++) {
+            idx += sprintf(tmp + idx, "%d,", input_buffer[i]);
+        }
+        cp_log("dump: %s", tmp);
+        */
 
         wrefresh(cw_manage[CP_CHAT_WIN].win);
 
@@ -1267,18 +1277,25 @@ void get_input_buffer(char *input_buffer)
             mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
 
         } else if(ch == KEY_DC) {
+            char *pull_char;
+            int buff_len = strlen(input_buffer);;
+
             if(cursor > ch_cnt) {
                 continue;
             }
 
             if(input_buffer[buf_idx] < 0) {
-                strcpy(input_buffer + buf_idx, input_buffer + buf_idx + 3);
+                pull_char = input_buffer + buf_idx + 3;
                 ch_cnt -= 2;
+                buff_len -=3;
 
             } else {
-                strcpy(input_buffer + buf_idx, input_buffer + buf_idx + 1);
+                pull_char = input_buffer + buf_idx + 1;
                 ch_cnt -= 1;
+                buff_len -=1;
             }
+            memcpy(input_buffer + buf_idx, pull_char, strlen(pull_char));
+            input_buffer[buff_len] = '\0';
 
             cw_manage[CP_CHAT_WIN].update_handler();
             mvwaddstr(cw_manage[CP_CHAT_WIN].win, 1, 1, input_buffer);
