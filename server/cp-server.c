@@ -25,14 +25,14 @@ int main(int argc, char *argv[])
                 cp_log("failed daemonize");
                 return -1;
             }
+            if(cp_write_pid() < 0) {
+                return -1;
+            }
         }
     }
 
     cp_log("start cperl-chat...(v.%s)", cp_version);
 
-    if(cp_write_pid() < 0) {
-        return -1;
-    }
     clilen = sizeof(struct sockaddr_in);
 
     init_usr_list();
