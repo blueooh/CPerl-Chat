@@ -7,15 +7,32 @@ int listen_sock;
 int clilen;
 struct epoll_event *events;
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
-    if(cp_init_log("/var/log/cperl-chatd.log") < 0) {
+    if(cp_init_log(CP_LOG_FILE) < 0) {
         printf("init log error\n");
         return -1;
     }
 
+    if(argc >= 2) {
+        if(!strcmp(argv[1], "stop")) {
+            cp_log("daemon stopping...");
+            cp_daemon_stop();
+            return 0;
+
+        } else if(!strcmp(argv[1], "daemon")) {
+            if(daemon(1, 1)) {
+                cp_log("failed daemonize");
+                return -1;
+            }
+        }
+    }
+
     cp_log("start cperl-chat...(v.%s)", cp_version);
 
+    if(cp_write_pid() < 0) {
+        return -1;
+    }
     clilen = sizeof(struct sockaddr_in);
 
     init_usr_list();
@@ -406,4 +423,70 @@ int cp_version_compare(const char *cli_ver, const char *srv_ver)
     }
 
     return 0;
+}
+
+int cp_write_pid()
+{
+    int fd, len;
+    char pid_buff[64], *file = CP_PID_FILE;
+    pid_t pid;
+
+    if(!access(file, R_OK)) {
+        cp_log("daemon is still running..., firstly kill deamon...");
+        return -1;
+    }
+
+    if((fd = open(file, O_RDWR | O_CREAT, 0644)) <= 0) {
+        cp_log("failed to open pid file...: %s", file);
+        return -1;
+    }
+
+    pid = getpid();
+    len = sprintf(pid_buff, "%u", pid);
+    write(fd, pid_buff, len);
+    close(fd);
+
+    cp_log("daemon pid is %d", pid);
+
+    return len;
+}
+
+pid_t cp_read_pid()
+{
+    int fd;
+    pid_t pid;
+    char pid_buff[64], *file = CP_PID_FILE;
+
+    if((fd = open(file, O_RDWR)) < 0) {
+        cp_log("failed to open pid...: %s", file);
+        return -1;
+    }
+
+    if(read(fd, pid_buff, sizeof(pid_buff)) < 0) {
+        cp_log("failed to read pid...: %s", file);
+        return -1;
+    }
+    pid = (pid_t)atoi(pid_buff);
+    close(fd);
+
+    cp_log("read pid...: %d", pid);
+
+    return pid;
+}
+
+void cp_daemon_stop()
+{
+    pid_t pid;
+
+    if((pid = cp_read_pid()) < 0) {
+        cp_log("pid read error");
+        return;
+    }
+
+    cp_log("kill daemon..: pid(%d)", pid);
+
+    kill(pid, SIGKILL);
+    unlink(CP_PID_FILE);
+
+    return;
 }

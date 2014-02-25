@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <sys/signal.h>
 
 #ifdef TEST
 #define SERVER_PORT "8888"
@@ -25,6 +26,8 @@
 #endif
 #define SA  struct sockaddr
 #define EPOLL_SIZE 20
+#define CP_PID_FILE "/var/run/cperl-chatd.pid"
+#define CP_LOG_FILE "/var/log/cperl-chatd.log"
 
 typedef struct user_data {
     int sock;
@@ -52,4 +55,7 @@ void cp_server_main_loop();
 int cp_accept();
 int cp_read_user_data(int fd);
 int cp_version_compare(const char *cli_ver, const char *srv_ver);
+int cp_write_pid();
+pid_t cp_read_pid();
+void cp_daemon_stop();
 #endif
