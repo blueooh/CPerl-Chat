@@ -671,11 +671,10 @@ void current_time()
 //info window에 정보를 출력.
 void *info_win_thread(void *data) 
 {
-    int n, fd;
-    int state;
-    char buf[MESSAGE_BUFFER_SIZE+1];
-    char *parse;
-    char *file_name  = INFO_PIPE_FILE;
+    int fd, rlen, state;
+    char buf[MESSAGE_BUFFER_SIZE + 1];
+    char *file_name = INFO_PIPE_FILE;
+    char *pbuf, *token, *save_buf;
     struct timeval timeout = { .tv_sec = 60, .tv_usec = 0 };
 
     fd_set readfds, tmpfds;
@@ -698,9 +697,6 @@ void *info_win_thread(void *data)
 
     //select fifo 파일변화 추적
     while(1) {
-        char *pbuf;
-        int rlen = 0;
-
         tmpfds = readfds;
         system(plugin_cmd);
         state = select(fd + 1, &tmpfds, NULL, NULL, &timeout);
@@ -711,19 +707,20 @@ void *info_win_thread(void *data)
 
             default :
                 if(FD_ISSET(fd, &tmpfds)) {
+                    memset(buf, 0x00, sizeof(buf));
                     if((rlen = read(fd, buf, MESSAGE_BUFFER_SIZE)) < 0) {
                         cp_log_ui(MSG_ERROR_STATE, "info read error: %d", rlen);
                         break;
                     }
 
-                    buf[rlen] = '\0';
-                    pbuf = buf;
-
-                    while(parse = strtok(pbuf, DELIM)) {
-                        insert_info_list(parse);
+                    for(pbuf = buf; ; pbuf = NULL) {
+                        token = strtok_r(pbuf, DELIM, &save_buf);
+                        if(token == NULL) {
+                            break;
+                        }
+                        insert_info_list(token);
                         cw_manage[CP_INFO_WIN].update_handler();
                         wrefresh(cw_manage[CP_CHAT_WIN].win);
-                        pbuf = NULL;
                         sleep(1);
                     }
                 }
