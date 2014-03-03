@@ -313,7 +313,7 @@ void update_info_win()
     pthread_mutex_lock(&info_list_lock);
     win = cw_manage[CP_INFO_WIN].win;
     line_max = ui->lines - 1;
-    wclear(win);
+    werase(win);
     list_for_each_entry_safe(node, tnode, &info_list, list) {
         print_y = (ui->lines - 2) - i;
         print_x = 1;
@@ -350,7 +350,7 @@ void update_local_info_win()
     glibtop_netload netload[MAXINTERFACES];
 
     if(usr_state == USER_LOGOUT_STATE) {
-        wclear(win);
+        werase(win);
         draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
         return;
     }
@@ -358,7 +358,7 @@ void update_local_info_win()
     print_y = 1;
     print_x = 1;
 
-    wclear(win);
+    werase(win);
 
     // cpu informaion
     glibtop_get_cpu(&cpu);
@@ -498,7 +498,7 @@ void update_show_win()
     pthread_mutex_lock(&msg_list_lock);
     win = cw_manage[CP_SHOW_WIN].win;
     line_max = ui->lines - 1;
-    wclear(win);
+    werase(win);
     list_for_each_entry_safe(node, tnode, &msg_list, list) {
         if(scrolled++ < scroll_index) {
             continue;
@@ -630,7 +630,7 @@ void update_usr_win()
     pthread_mutex_lock(&usr_list_lock);
     win = cw_manage[CP_ULIST_WIN].win;
     line_max = ui->lines;
-    wclear(win);
+    werase(win);
     for(hash_idx = 0; hash_idx < USER_HASH_SIZE; hash_idx++) {
         list_for_each_entry_safe(node, tnode, &usr_list[hash_idx], list) {
             print_y = i + 1;
@@ -743,7 +743,7 @@ void update_chat_win()
 {
     WINDOW *win = cw_manage[CP_CHAT_WIN].win;
 
-    wclear(win);
+    werase(win);
     draw_win_ui(win, cw_manage[CP_CHAT_WIN].ui);
     wmove(win, 1, 1);
 }
@@ -879,7 +879,7 @@ void cp_init_chat()
 
 void resize_win_ui(WINDOW *win, struct win_ui ui, cb_update update)
 {
-    wclear(win);
+    werase(win);
     wresize(win, ui.lines, ui.cols);
     mvwin(win, ui.start_y, ui.start_x);
     update();
