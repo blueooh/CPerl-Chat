@@ -1026,7 +1026,9 @@ void cp_rcv_proc(CP_PACKET *p)
         case MSG_USERLIST_STATE:
             clear_usr_list();
             pbuf = p->message;
+            cp_log("received user list from server...: user-list(%s)", pbuf);
             while(usr_id = strtok(pbuf, USER_DELIM)) {
+                cp_log("insert user...: user-list(%s)", usr_id);
                 insert_usr_list(usr_id);
                 pbuf = NULL;
             }

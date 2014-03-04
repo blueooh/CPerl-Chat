@@ -124,6 +124,7 @@ int new_connect_proc(int sock, CP_PACKET *p)
     insert_usr_list(data);
 
     get_all_user_list(usr_list_buf, sizeof(usr_list_buf));
+    cp_log("send user list to client : id(%s), user list(%s)", p->cp_h.id, usr_list_buf);
     cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buf);
 
     noti_packet.cp_h.state = MSG_NEWUSER_STATE;
