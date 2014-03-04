@@ -61,43 +61,49 @@ void init_usr_list()
     }
 }
 
-struct user_list_node *insert_usr_list(ud data)
+int insert_usr_list(int sock, char *id)
 {
     struct user_list_node *node;
-    unsigned int hash;
+    unsigned int hash = sock % USER_HASH_SIZE;
 
     node = (struct user_list_node *)malloc(sizeof(struct user_list_node));
-    node->data.sock = data.sock;
-    strcpy(node->data.id, data.id);
-    hash = hash_func(data.id);
+    if(!node) {
+        return -1;
+    }
+
+    node->sock = sock;
+    strcpy(node->id, id);
     list_add(&node->list, &usr_list[hash]);
-    cp_log("insert user list: id(%s), sock(%d), hash(%d)", data.id, data.sock, hash);
+
+    cp_log("insert user list: id(%s), sock(%d), hash(%d)", id, sock, hash);
+
+    return 0;
 }
 
-void delete_usr_list(ud data)
+void delete_usr_list(int sock)
 {
     struct user_list_node *node, *tnode;
-    unsigned int hash;
+    unsigned int hash = sock % USER_HASH_SIZE;
 
-    hash = hash_func(data.id);
     list_for_each_entry_safe(node, tnode, &usr_list[hash], list) {
-        if(!strcmp(data.id, node->data.id)) {
+        if(sock == node->sock) {
+            cp_log("delete user list: id(%s), sock(%d), hash(%d)", node->id, node->sock, hash);
             list_del(&node->list);
             free(node);
-            cp_log("delete user list: id(%s), sock(%d), hash(%d)", data.id, data.sock, hash);
         }
     }
 }
 
-struct user_list_node *exist_usr_list(ud data)
+struct user_list_node *exist_usr_id(char *id)
 {
     struct user_list_node *node = NULL;
-    unsigned int hash;
+    int hash_idx;
 
-    hash = hash_func(data.id);
-    list_for_each_entry(node, &usr_list[hash], list) {
-        if(!strcmp(data.id, node->data.id)) {
-            return node;
+    for(hash_idx = 0; hash_idx < USER_HASH_SIZE; hash_idx++) {
+        list_for_each_entry(node, &usr_list[hash_idx], list) {
+            if(!strcmp(id, node->id)) {
+                return node;
+            }
         }
     }
 
@@ -108,7 +114,6 @@ int new_connect_proc(int sock, CP_PACKET *p)
 {
     struct user_list_node *node;
     int hash, idx = 0;
-    ud data;
     CP_PACKET noti_packet;
     char usr_list_buf[MESSAGE_BUFFER_SIZE];
 
@@ -119,9 +124,7 @@ int new_connect_proc(int sock, CP_PACKET *p)
         return -1;
     }
 
-    data.sock = sock;
-    strcpy(data.id, p->cp_h.id);
-    insert_usr_list(data);
+    insert_usr_list(sock, p->cp_h.id);
 
     get_all_user_list(usr_list_buf, sizeof(usr_list_buf));
     cp_log("send user list to client : id(%s), user list(%s)", p->cp_h.id, usr_list_buf);
@@ -141,7 +144,7 @@ int get_all_user_list(char *buff, int size)
 
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
-            idx += snprintf(buff + idx, size - idx, "%s%s", node->data.id, USER_DELIM);
+            idx += snprintf(buff + idx, size - idx, "%s%s", node->id, USER_DELIM);
         }
     }
 
@@ -150,35 +153,23 @@ int get_all_user_list(char *buff, int size)
 
 int remove_user(int fd)
 {
-    int hash, found = 0;
     struct user_list_node *node;
-    ud user_data;
     CP_PACKET packet;
 
     /* find user in hash table weather or not exists */
-    for(hash = 0; hash < USER_HASH_SIZE; hash++) {
-        list_for_each_entry(node, &usr_list[hash], list) {
-            if(node->data.sock == fd) {
-                found = 1;
-                strcpy(user_data.id, node->data.id);
-                user_data.sock = node->data.sock;
-                break;
-            }
-        }
-    }
-
-    if(found) {
-        cp_log("found close user: id(%s), sock(%d)", user_data.id, user_data.sock);
-        delete_usr_list(user_data);
+    node = get_usr_list(fd);
+    if(node) {
+        cp_log("found close user: id(%s), sock(%d)", node->id, node->sock);
+        delete_usr_list(fd);
         packet.cp_h.state = MSG_DELUSER_STATE;
-        strcpy(packet.cp_h.id, user_data.id);
+        strcpy(packet.cp_h.id, node->id);
         cp_broadcast_message(&packet);
 
     } else {
         cp_log("cannot fond user, anyway force close: sock(%d)", fd);
     }
 
-    epoll_ctl(efd, EPOLL_CTL_DEL, user_data.sock, events);
+    epoll_ctl(efd, EPOLL_CTL_DEL, fd, events);
 
     return close(fd);
 }
@@ -189,24 +180,20 @@ int reconnect_proc(int sock, CP_PACKET *p)
     struct user_list_node *node;
     CP_PACKET noti_packet;
     char usr_list_buff[MESSAGE_BUFFER_SIZE];
-    ud user_data;
 
-    user_data.sock = sock;
-    strcpy(user_data.id, p->cp_h.id);
-
-    if(node = exist_usr_list(user_data)) {
+    if(node = exist_usr_id(p->cp_h.id)) {
         /* if user exists in hash table, update sock fd */
-        epoll_ctl(efd, EPOLL_CTL_DEL, node->data.sock, events);
-        close(node->data.sock);
-        node->data.sock = user_data.sock;
-        cp_log("user socket changed: user-id(%s), sock(%d)", node->data.id, node->data.sock);
+        epoll_ctl(efd, EPOLL_CTL_DEL, node->sock, events);
+        close(sock);
+        node->sock = sock;
+        cp_log("user socket changed: user-id(%s), sock(%d)", node->id, node->sock);
 
         noti_packet.cp_h.state = MSG_USERLIST_STATE;
         get_all_user_list(usr_list_buff, sizeof(usr_list_buff));
         cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buff);
 
     } else {
-        cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", user_data.id, user_data.sock);
+        cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", p->cp_h.id, sock);
         /* If user not exsits in hash table, process new connection */
         new_connect_proc(sock, p);
     }
@@ -243,9 +230,9 @@ int cp_broadcast_message(CP_PACKET *p)
 
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
-            if(len = write(node->data.sock, (char *)p, sizeof(CP_PACKET)) < 0) {
+            if(len = write(node->sock, (char *)p, sizeof(CP_PACKET)) < 0) {
                 cp_log("broadcast socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
-                        node->data.id, node->data.sock, errno, strerror(errno));
+                        node->id, node->sock, errno, strerror(errno));
             }
         }
     }
@@ -363,7 +350,6 @@ int cp_read_user_data(int fd)
 {
     int readn;
     CP_PACKET rcv_packet;
-    ud user_data;
 
     readn = read(fd, (char *)&rcv_packet, 1024);
     if (readn <= 0) {
@@ -373,9 +359,6 @@ int cp_read_user_data(int fd)
         remove_user(fd);
 
     } else {
-        user_data.sock = fd;
-        strcpy(user_data.id, rcv_packet.cp_h.id);
-
         switch(rcv_packet.cp_h.state) {
             case MSG_RECONNECT_STATE:
                 cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", 
@@ -384,10 +367,10 @@ int cp_read_user_data(int fd)
                 break;
 
             case MSG_NEWCONNECT_STATE:
-                if(exist_usr_list(user_data)) {
+                if(exist_usr_id(rcv_packet.cp_h.id)) {
                     cp_log("new connect user id exists, force to close...: user-id(%s)", 
                             rcv_packet.cp_h.id);
-                    cp_unicast_message(user_data.sock, MSG_ALAM_STATE, 
+                    cp_unicast_message(fd, MSG_ALAM_STATE, 
                             "ID Exists already, re-connect to server after change your ID!");
                     epoll_ctl(efd, EPOLL_CTL_DEL, fd, events);
                     close(fd);
@@ -395,7 +378,7 @@ int cp_read_user_data(int fd)
 
                 } else {
                     cp_log("log-in user: ver(%s), id(%s), sock(%d)", 
-                            rcv_packet.cp_h.version, rcv_packet.cp_h.id, user_data.sock);
+                            rcv_packet.cp_h.version, rcv_packet.cp_h.id, fd);
                     new_connect_proc(fd, &rcv_packet);
                 }
                 break;
@@ -490,4 +473,18 @@ void cp_daemon_stop()
     unlink(CP_PID_FILE);
 
     return;
+}
+
+struct user_list_node *get_usr_list(int sock)
+{
+    int hash = sock % USER_HASH_SIZE;
+    struct user_list_node *node;
+
+    list_for_each_entry(node, &usr_list[hash], list) {
+        if(node->sock == sock) {
+            return node;
+        }
+    }
+
+    return NULL;
 }

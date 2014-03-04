@@ -29,22 +29,19 @@
 #define CP_PID_FILE "/var/run/cperl-chatd.pid"
 #define CP_LOG_FILE "/var/log/cperl-chatd.log"
 
-typedef struct user_data {
-    int sock;
-    char id[ID_SIZE];
-} ud;
-
 struct user_list_node {
     struct list_head list;
-    ud data;
+    int sock;
+    char id[ID_SIZE];
 };
 
 void init_usr_list();
 int create_listen_socket();
 int init_epoll();
-struct user_list_node *insert_usr_list(ud data);
-void delete_usr_list(ud data);
-struct user_list_node *exist_usr_list(ud data);
+int insert_usr_list(int sock, char *id);
+void delete_usr_list(int sock);
+struct user_list_node *get_usr_list(int sock);
+struct user_list_node *exist_usr_id(char *id);
 int new_connect_proc(int sock, CP_PACKET *packet);
 int get_all_user_list(char *buff, int size);
 int remove_user(int fd);
