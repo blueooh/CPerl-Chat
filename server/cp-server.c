@@ -392,6 +392,7 @@ int cp_read_user_data(int fd)
                 break;
 
             default:
+                cp_log("invalid packet: sock(%d), state(%d)", fd, rcv_packet.cp_h.state);
                 break;
         }
     }
