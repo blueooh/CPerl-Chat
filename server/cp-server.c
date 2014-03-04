@@ -115,7 +115,7 @@ int new_connect_proc(int sock, CP_PACKET *p)
     if(cp_version_compare(p->cp_h.version, cp_version) < 0) {
         cp_unicast_message(sock, MSG_ALAM_STATE, 
                 "version compare fail, update your cperl-chat version == %s", cp_version);
-        close_user(sock);
+        remove_user(sock);
         return -1;
     }
 
@@ -147,7 +147,7 @@ int get_all_user_list(char *buff, int size)
     return idx;
 }
 
-int close_user(int fd)
+int remove_user(int fd)
 {
     int hash, found = 0;
     struct user_list_node *node;
@@ -369,7 +369,7 @@ int cp_read_user_data(int fd)
         /* handle close clients otherwise read error */
         cp_log("closed socket connection: sock(%d), readn(%d), errno(%d), strerror(%s)", 
                 fd, readn, errno, strerror(errno));
-        close_user(fd);
+        remove_user(fd);
 
     } else {
         user_data.sock = fd;
