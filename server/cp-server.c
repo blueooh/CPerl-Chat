@@ -104,15 +104,15 @@ struct user_list_node *exist_usr_list(ud data)
     return NULL;
 }
 
-int new_connect_proc(int sock, msgst *packet)
+int new_connect_proc(int sock, CP_PACKET *p)
 {
     struct user_list_node *node;
     int hash, idx = 0;
     ud data;
-    msgst noti_packet;
+    CP_PACKET noti_packet;
     char usr_list_buf[MESSAGE_BUFFER_SIZE];
 
-    if(cp_version_compare(packet->version, cp_version) < 0) {
+    if(cp_version_compare(p->cp_h.version, cp_version) < 0) {
         cp_unicast_message(sock, MSG_ALAM_STATE, 
                 "version compare fail, update your cperl-chat version == %s", cp_version);
         close_user(sock);
@@ -120,14 +120,14 @@ int new_connect_proc(int sock, msgst *packet)
     }
 
     data.sock = sock;
-    strcpy(data.id, packet->id);
+    strcpy(data.id, p->cp_h.id);
     insert_usr_list(data);
 
     get_all_user_list(usr_list_buf, sizeof(usr_list_buf));
     cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buf);
 
-    noti_packet.state = MSG_NEWUSER_STATE;
-    strcpy(noti_packet.id, packet->id);
+    noti_packet.cp_h.state = MSG_NEWUSER_STATE;
+    strcpy(noti_packet.cp_h.id, p->cp_h.id);
     cp_broadcast_message(&noti_packet);
 
     return 0;
@@ -152,7 +152,7 @@ int close_user(int fd)
     int hash, found = 0;
     struct user_list_node *node;
     ud user_data;
-    msgst snd_ms;
+    CP_PACKET packet;
 
     /* find user in hash table weather or not exists */
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
@@ -169,9 +169,9 @@ int close_user(int fd)
     if(found) {
         cp_log("found close user: id(%s), sock(%d)", user_data.id, user_data.sock);
         delete_usr_list(user_data);
-        snd_ms.state = MSG_DELUSER_STATE;
-        strcpy(snd_ms.id, user_data.id);
-        cp_broadcast_message(&snd_ms);
+        packet.cp_h.state = MSG_DELUSER_STATE;
+        strcpy(packet.cp_h.id, user_data.id);
+        cp_broadcast_message(&packet);
 
     } else {
         cp_log("cannot fond user, anyway force close: sock(%d)", fd);
@@ -182,16 +182,16 @@ int close_user(int fd)
     return close(fd);
 }
 
-int reconnect_proc(int sock, msgst *packet)
+int reconnect_proc(int sock, CP_PACKET *p)
 {
     int ret = 0;
     struct user_list_node *node;
-    msgst noti_packet;
+    CP_PACKET noti_packet;
     char usr_list_buff[MESSAGE_BUFFER_SIZE];
     ud user_data;
 
     user_data.sock = sock;
-    strcpy(user_data.id, packet->id);
+    strcpy(user_data.id, p->cp_h.id);
 
     if(node = exist_usr_list(user_data)) {
         /* if user exists in hash table, update sock fd */
@@ -200,14 +200,14 @@ int reconnect_proc(int sock, msgst *packet)
         node->data.sock = user_data.sock;
         cp_log("user socket changed: user-id(%s), sock(%d)", node->data.id, node->data.sock);
 
-        noti_packet.state = MSG_USERLIST_STATE;
+        noti_packet.cp_h.state = MSG_USERLIST_STATE;
         get_all_user_list(usr_list_buff, sizeof(usr_list_buff));
         cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buff);
 
     } else {
         cp_log("user try re-connect..., not exists so new add: user-id(%s), sock(%d)", user_data.id, user_data.sock);
         /* If user not exsits in hash table, process new connection */
-        new_connect_proc(sock, packet);
+        new_connect_proc(sock, p);
     }
 
     return ret;
@@ -216,13 +216,13 @@ int reconnect_proc(int sock, msgst *packet)
 int cp_unicast_message(int sock, int state, char *data, ...)
 {
     int len = -1;
-    msgst packet;
+    CP_PACKET packet;
 
     cp_va_format(data);
 
     if(vbuffer) {
-        strcpy(packet.version, cp_version);
-        packet.state = state;
+        strcpy(packet.cp_h.version, cp_version);
+        packet.cp_h.state = state;
         strcpy(packet.message, vbuffer);
 
         if(len = write(sock, (char *)&packet, sizeof(packet)) < 0) {
@@ -235,14 +235,14 @@ int cp_unicast_message(int sock, int state, char *data, ...)
     return len;
 }
 
-int cp_broadcast_message(msgst *packet)
+int cp_broadcast_message(CP_PACKET *p)
 {
     int hash, len = 0;
     struct user_list_node *node;
 
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
-            if(len = write(node->data.sock, (char *)packet, sizeof(*packet)) < 0) {
+            if(len = write(node->data.sock, (char *)p, sizeof(CP_PACKET)) < 0) {
                 cp_log("broadcast socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
                         node->data.id, node->data.sock, errno, strerror(errno));
             }
@@ -361,7 +361,7 @@ int cp_accept()
 int cp_read_user_data(int fd)
 {
     int readn;
-    msgst rcv_packet;
+    CP_PACKET rcv_packet;
     ud user_data;
 
     readn = read(fd, (char *)&rcv_packet, 1024);
@@ -373,19 +373,19 @@ int cp_read_user_data(int fd)
 
     } else {
         user_data.sock = fd;
-        strcpy(user_data.id, rcv_packet.id);
+        strcpy(user_data.id, rcv_packet.cp_h.id);
 
-        switch(rcv_packet.state) {
+        switch(rcv_packet.cp_h.state) {
             case MSG_RECONNECT_STATE:
                 cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", 
-                        rcv_packet.id, fd);
+                        rcv_packet.cp_h.id, fd);
                 reconnect_proc(fd, &rcv_packet);
                 break;
 
             case MSG_NEWCONNECT_STATE:
                 if(exist_usr_list(user_data)) {
                     cp_log("new connect user id exists, force to close...: user-id(%s)", 
-                            rcv_packet.id);
+                            rcv_packet.cp_h.id);
                     cp_unicast_message(user_data.sock, MSG_ALAM_STATE, 
                             "ID Exists already, re-connect to server after change your ID!");
                     epoll_ctl(efd, EPOLL_CTL_DEL, fd, events);
@@ -394,7 +394,7 @@ int cp_read_user_data(int fd)
 
                 } else {
                     cp_log("log-in user: ver(%s), id(%s), sock(%d)", 
-                            rcv_packet.version, rcv_packet.id, user_data.sock);
+                            rcv_packet.cp_h.version, rcv_packet.cp_h.id, user_data.sock);
                     new_connect_proc(fd, &rcv_packet);
                 }
                 break;

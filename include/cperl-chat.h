@@ -170,7 +170,7 @@ void cp_init_chat();
 void cp_create_win();
 void cp_logout();
 void cp_exit();
-void cp_rcv_proc(msgst *ms);
+void cp_rcv_proc(CP_PACKET *p);
 int cp_sock_option();
 int cp_send_data(int type, char *id, char *data);
 void init_usr_list();

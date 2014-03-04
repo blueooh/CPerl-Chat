@@ -123,7 +123,6 @@ int cp_connect_server(int try_type)
     struct hostent *entry;
     char *resolved_host;
     int thr_id, ret;
-    msgst ms;
 
     if(try_type == MSG_RECONNECT_STATE) {
         if(sock)
@@ -183,7 +182,7 @@ int cp_connect_server(int try_type)
 
 void *rcv_thread(void *data) {
     int read_len, state, max_fd;
-    msgst ms;
+    CP_PACKET rcv_packet;
     char *usr_id, *pbuf;
     fd_set readfds, tmpfds;
 
@@ -207,7 +206,7 @@ void *rcv_thread(void *data) {
 
             default:
                 if(FD_ISSET(sock, &tmpfds)) {
-                    read_len = read(sock, (char *)&ms, sizeof(msgst));
+                    read_len = read(sock, (char *)&rcv_packet, sizeof(CP_PACKET));
                     if(read_len == 0) {
                         cp_log_ui(MSG_ERROR_STATE, 
                                 "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
@@ -234,7 +233,7 @@ void *rcv_thread(void *data) {
                         cp_logout();
 
                     } else {
-                        cp_rcv_proc(&ms); 
+                        cp_rcv_proc(&rcv_packet); 
                     }
                 }
 
@@ -1007,26 +1006,26 @@ void cp_exit()
     exit(0);
 }
 
-void cp_rcv_proc(msgst *ms)
+void cp_rcv_proc(CP_PACKET *p)
 {
     char message_buf[MESSAGE_BUFFER_SIZE];
     char *usr_id, *pbuf;
 
-    if(!ms) 
+    if(!p) 
         return;
 
     // 서버로 부터 온 메시지의 종류를 구별한다.
-    switch(ms->state) {
+    switch(p->cp_h.state) {
         // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
         case MSG_ALAM_STATE:
             // 서버로 부터 사용자들의 메시지를 전달 받을 때
         case MSG_DATA_STATE:
-            strcpy(message_buf, ms->message);
+            strcpy(message_buf, p->message);
             break;
             // 서버로 부터 전체 사용자 목록을 받을 때
         case MSG_USERLIST_STATE:
             clear_usr_list();
-            pbuf = ms->message;
+            pbuf = p->message;
             while(usr_id = strtok(pbuf, USER_DELIM)) {
                 insert_usr_list(usr_id);
                 pbuf = NULL;
@@ -1040,20 +1039,20 @@ void cp_rcv_proc(msgst *ms)
             return;
             // 서버로 부터 새로운 사용자에 대한 알림.
         case MSG_NEWUSER_STATE:
-            if(!exist_usr_list(ms->id)) {
-                insert_usr_list(ms->id);
+            if(!exist_usr_list(p->cp_h.id)) {
+                insert_usr_list(p->cp_h.id);
             }
             cw_manage[CP_ULIST_WIN].update_handler();
             break;
             // 서버로 부터 연결 해제된 사용자에 대한 알림.
         case MSG_DELUSER_STATE:
-            delete_usr_list(ms->id);
+            delete_usr_list(p->cp_h.id);
             cw_manage[CP_ULIST_WIN].update_handler();
             break;
     }
 
     // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-    insert_msg_list(ms->state, ms->id, "%s", message_buf);
+    insert_msg_list(p->cp_h.state, p->cp_h.id, "%s", message_buf);
     cw_manage[CP_SHOW_WIN].update_handler();
     wrefresh(cw_manage[CP_CHAT_WIN].win);
 }
@@ -1493,14 +1492,14 @@ out:
 int cp_send_data(int type, char *id, char *data)
 {
     int len;
-    msgst pkt;
+    CP_PACKET packet;
 
-    strcpy(pkt.version, cp_version);
-    pkt.state = type;
-    strcpy(pkt.id, id);
-    strcpy(pkt.message, data);
+    strcpy(packet.cp_h.version, cp_version);
+    packet.cp_h.state = type;
+    strcpy(packet.cp_h.id, id);
+    strcpy(packet.message, data);
 
-    if((len = write(sock, (char *)&pkt, sizeof(pkt))) < 0) {
+    if((len = write(sock, (char *)&packet, sizeof(CP_PACKET))) < 0) {
         cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), send_type(%d)", strerror(errno), errno, type);
         return errno;
     }

@@ -34,12 +34,16 @@ enum {
     USER_LOGIN_STATE
 };
 
-typedef struct message_st {
+typedef struct cp_packet_header {
     char version[VERSION_SIZE];
     unsigned int state;
     char id[ID_SIZE];
+}CP_PACKET_HEADER;
+
+typedef struct cp_packet {
+    CP_PACKET_HEADER cp_h;
     char message[MESSAGE_BUFFER_SIZE];
-}msgst;
+}CP_PACKET;
 
 inline unsigned int hash_func(char *s)
 {
