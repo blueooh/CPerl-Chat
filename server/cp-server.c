@@ -386,15 +386,15 @@ int cp_read_user_data(int fd)
         }
 
         memcpy(&packet.cp_h, rcv_buffer, sizeof(CP_PACKET_HEADER));
-        if(packet.cp_h.dlen) {
-            packet.data = (char *)malloc(packet.cp_h.dlen);
-            memcpy(packet.data, rcv_buffer + sizeof(CP_PACKET_HEADER), packet.cp_h.dlen);
-        }
+        //cp_log("ver:%s, state:%d, dlen:%d", packet.cp_h.version, packet.cp_h.state, packet.cp_h.dlen);
 
         if(readn != (sizeof(CP_PACKET_HEADER) + packet.cp_h.dlen)) {
             cp_log("receive packet length strange..., read len(%d)", readn);
             goto out;
         }
+
+        packet.data = (char *)malloc(packet.cp_h.dlen);
+        memcpy(packet.data, rcv_buffer + sizeof(CP_PACKET_HEADER), packet.cp_h.dlen);
 
         switch(packet.cp_h.state) {
             case MSG_RECONNECT_STATE:

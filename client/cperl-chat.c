@@ -1520,10 +1520,10 @@ int cp_send_data(int type, char *id, char *data, unsigned int data_len)
         memcpy(cph.id, id, strlen(id));
         cph.id[strlen(id)] = '\0';
     }
+    cph.dlen = data_len;
     memcpy(send_buffer, &cph, sizeof(CP_PACKET_HEADER));
 
     /* padding payload */
-    cph.dlen = data_len;
     if(data_len && data) {
         memcpy(send_buffer + sizeof(CP_PACKET_HEADER), data, data_len);
     }
