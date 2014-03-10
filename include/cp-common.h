@@ -10,7 +10,7 @@
 #define TIME_BUFFER_SIZE 11
 #define ID_SIZE 50
 #define VERSION_SIZE 10
-#define MESSAGE_BUFFER_SIZE 512
+#define MESSAGE_BUFFER_SIZE 4096
 #define FILE_NAME_MAX 255
 #define FILE_PATH_MAX 4096
 #define TOTAL_MESSAGE_SIZE \
@@ -38,11 +38,12 @@ typedef struct cp_packet_header {
     char version[VERSION_SIZE];
     unsigned int state;
     char id[ID_SIZE];
+    unsigned int dlen;
 }CP_PACKET_HEADER;
 
 typedef struct cp_packet {
     CP_PACKET_HEADER cp_h;
-    char message[MESSAGE_BUFFER_SIZE];
+    char *data;
 }CP_PACKET;
 
 inline unsigned int hash_func(char *s)

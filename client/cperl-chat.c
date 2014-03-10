@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     while(1) {
         char str[MESSAGE_BUFFER_SIZE], *built_str;
-        int str_size = 0;
+        int str_size = 0, built_len = 0;
 
         str[0] = '\0';
         cw_manage[CP_CHAT_WIN].update_handler();
@@ -89,17 +89,17 @@ int main(int argc, char *argv[])
         if(!built_str){
             continue;
         }
+        built_len = strlen(built_str);
 
         if(str[0] == OPTION_CHAR) {
             parse_option(built_str);
         } else {
             if(usr_state == USER_LOGIN_STATE) {
-                cp_send_data(MSG_DATA_STATE, id, built_str); 
+                cp_send_data(MSG_DATA_STATE, id, built_str, built_len); 
             }
         }
-        if(built_str) {
-            free(built_str);
-        }
+
+        free(built_str);
     }
 
     return 0;
@@ -173,7 +173,7 @@ int cp_connect_server(int try_type)
 
     // TCP 접속이 완료되고 서버에게 새로운 사용자라는 것을 전달한다.
     // 이때 알리는 동시에 아이디 값을 같이 전달하게 되어 서버에서 사용자 목록에 추가되게 된다(아이디는 이미 위에서 저장됨).
-    if((ret = cp_send_data(try_type, id, "")) < 0) {
+    if((ret = cp_send_data(try_type, id, NULL, 0)) < 0) {
         cp_logout();
     }
 
@@ -182,7 +182,6 @@ int cp_connect_server(int try_type)
 
 void *rcv_thread(void *data) {
     int read_len, state, max_fd;
-    CP_PACKET rcv_packet;
     char *usr_id, *pbuf;
     fd_set readfds, tmpfds;
 
@@ -192,6 +191,7 @@ void *rcv_thread(void *data) {
 
     while(1) {
         struct timeval timeout = { .tv_sec = 5, .tv_usec = 0 };
+        char rcv_buffer[1024];
 
         tmpfds = readfds;
         state = select(max_fd, &tmpfds, 0, 0, &timeout);
@@ -201,12 +201,12 @@ void *rcv_thread(void *data) {
                 break;
 
             case 0:
-                cp_send_data(MSG_AVAILTEST_STATE, id, "");
+                cp_send_data(MSG_AVAILTEST_STATE, id, NULL, 0);
                 break;
 
             default:
                 if(FD_ISSET(sock, &tmpfds)) {
-                    read_len = read(sock, (char *)&rcv_packet, sizeof(CP_PACKET));
+                    read_len = read(sock, rcv_buffer, 2048);
                     if(read_len == 0) {
                         cp_log_ui(MSG_ERROR_STATE, 
                                 "connection closed with server: server(%s), read_len(%d), errno(%d), strerror(%s)", 
@@ -233,7 +233,19 @@ void *rcv_thread(void *data) {
                         cp_logout();
 
                     } else {
-                        cp_rcv_proc(&rcv_packet); 
+                        CP_PACKET packet;
+
+                        memcpy(&packet.cp_h, rcv_buffer, sizeof(CP_PACKET_HEADER));
+                        packet.data = (char *)malloc(packet.cp_h.dlen);
+                        memcpy(packet.data, rcv_buffer + sizeof(CP_PACKET_HEADER), packet.cp_h.dlen);
+                        /*
+                        cp_log_ui(MSG_ERROR_STATE, "read_len:%d, ver:%s, state:%d, dlen:%d, data:%s", 
+                                read_len, packet.cp_h.version, packet.cp_h.state, packet.cp_h.dlen, packet.data);
+                                */
+
+                        cp_rcv_proc(&packet); 
+
+                        free(packet.data);
                     }
                 }
 
@@ -1008,53 +1020,58 @@ void cp_exit()
 
 void cp_rcv_proc(CP_PACKET *p)
 {
-    char message_buf[MESSAGE_BUFFER_SIZE];
     char *usr_id, *pbuf;
+    char tmp[MESSAGE_BUFFER_SIZE];
 
-    if(!p) 
+    if(!p) {
         return;
+    }
 
-    // 서버로 부터 온 메시지의 종류를 구별한다.
     switch(p->cp_h.state) {
-        // 서버가 클라이언트에게 알림 메시지를 전달 받을 때
         case MSG_ALAM_STATE:
-            // 서버로 부터 사용자들의 메시지를 전달 받을 때
         case MSG_DATA_STATE:
-            strcpy(message_buf, p->message);
             break;
-            // 서버로 부터 전체 사용자 목록을 받을 때
+
         case MSG_USERLIST_STATE:
+
             clear_usr_list();
-            pbuf = p->message;
+
+            memcpy(tmp, p->data, p->cp_h.dlen);
+            pbuf = tmp;
             cp_log("received user list from server...: user-list(%s)", pbuf);
+
             while(usr_id = strtok(pbuf, USER_DELIM)) {
                 cp_log("insert user...: user-list(%s)", usr_id);
                 insert_usr_list(usr_id);
                 pbuf = NULL;
             }
+
             cw_manage[CP_ULIST_WIN].update_handler();
             wrefresh(cw_manage[CP_CHAT_WIN].win);
+
             if(usr_state != USER_LOGIN_STATE) {
                 cp_log_ui(MSG_ALAM_STATE, "cperl-chat connection: server(%s)", srvname);
             }
             usr_state = USER_LOGIN_STATE;
             return;
-            // 서버로 부터 새로운 사용자에 대한 알림.
+
         case MSG_NEWUSER_STATE:
             if(!exist_usr_list(p->cp_h.id)) {
                 insert_usr_list(p->cp_h.id);
             }
             cw_manage[CP_ULIST_WIN].update_handler();
             break;
-            // 서버로 부터 연결 해제된 사용자에 대한 알림.
+
         case MSG_DELUSER_STATE:
             delete_usr_list(p->cp_h.id);
             cw_manage[CP_ULIST_WIN].update_handler();
             break;
+            
+        default:
+            return;
     }
 
-    // 서버로 부터 받은 메시지를 가공 후 메시지 출력창에 업데이트.
-    insert_msg_list(p->cp_h.state, p->cp_h.id, "%s", message_buf);
+    insert_msg_list(p->cp_h.state, p->cp_h.id, "%s", p->data);
     cw_manage[CP_SHOW_WIN].update_handler();
     wrefresh(cw_manage[CP_CHAT_WIN].win);
 }
@@ -1491,20 +1508,30 @@ out:
     return built;
 }
 
-int cp_send_data(int type, char *id, char *data)
+int cp_send_data(int type, char *id, char *data, unsigned int data_len)
 {
-    int len;
-    CP_PACKET packet;
+    CP_PACKET_HEADER cph;
+    char send_buffer[1024];
 
-    strcpy(packet.cp_h.version, cp_version);
-    packet.cp_h.state = type;
-    strcpy(packet.cp_h.id, id);
-    strcpy(packet.message, data);
+    /* make header */
+    strcpy(cph.version, cp_version);
+    cph.state = type;
+    if(id) {
+        memcpy(cph.id, id, strlen(id));
+        cph.id[strlen(id)] = '\0';
+    }
+    memcpy(send_buffer, &cph, sizeof(CP_PACKET_HEADER));
 
-    if((len = write(sock, (char *)&packet, sizeof(CP_PACKET))) < 0) {
-        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), send_type(%d)", strerror(errno), errno, type);
-        return errno;
+    /* padding payload */
+    cph.dlen = data_len;
+    if(data_len && data) {
+        memcpy(send_buffer + sizeof(CP_PACKET_HEADER), data, data_len);
     }
 
-    return len;
+    if(write(sock, send_buffer, sizeof(CP_PACKET_HEADER) + data_len) < 0) {
+        cp_log_ui(MSG_ERROR_STATE, "%s: errno(%d), send_type(%d)", strerror(errno), errno, type);
+        return -1;
+    }
+
+    return 0;
 }

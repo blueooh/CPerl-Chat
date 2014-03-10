@@ -113,7 +113,7 @@ struct user_list_node *exist_usr_id(char *id)
 int new_connect_proc(int sock, CP_PACKET *p)
 {
     struct user_list_node *node;
-    int hash, idx = 0;
+    int len, hash, idx = 0;
     CP_PACKET noti_packet;
     char usr_list_buf[MESSAGE_BUFFER_SIZE];
 
@@ -127,11 +127,13 @@ int new_connect_proc(int sock, CP_PACKET *p)
     insert_usr_list(sock, p->cp_h.id);
 
     get_all_user_list(usr_list_buf, sizeof(usr_list_buf));
-    cp_log("send user list to client : id(%s), user list(%s)", p->cp_h.id, usr_list_buf);
-    cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buf);
+    len = cp_unicast_message(sock, MSG_USERLIST_STATE, usr_list_buf);
+    cp_log("send user list to client : id(%s), user list(%s), packet len(%d)", p->cp_h.id, usr_list_buf, len);
 
     noti_packet.cp_h.state = MSG_NEWUSER_STATE;
+    strcpy(noti_packet.cp_h.version, p->cp_h.version);
     strcpy(noti_packet.cp_h.id, p->cp_h.id);
+    noti_packet.cp_h.dlen = 0;
     cp_broadcast_message(&noti_packet);
 
     return 0;
@@ -162,7 +164,9 @@ int remove_user(int fd)
         cp_log("found close user: id(%s), sock(%d)", node->id, node->sock);
         delete_usr_list(fd);
         packet.cp_h.state = MSG_DELUSER_STATE;
+        strcpy(packet.cp_h.version, cp_version);
         strcpy(packet.cp_h.id, node->id);
+        packet.cp_h.dlen = 0;
         cp_broadcast_message(&packet);
 
     } else {
@@ -203,21 +207,33 @@ int reconnect_proc(int sock, CP_PACKET *p)
 
 int cp_unicast_message(int sock, int state, char *data, ...)
 {
-    int len = -1;
-    CP_PACKET packet;
+    int len = -1, vbuffer_len;
+    CP_PACKET_HEADER cph;
+    char send_buffer[1024];
 
+    strcpy(cph.version, cp_version);
+    cph.state = state;
     cp_va_format(data);
-
     if(vbuffer) {
-        strcpy(packet.cp_h.version, cp_version);
-        packet.cp_h.state = state;
-        strcpy(packet.message, vbuffer);
+        cph.dlen = strlen(vbuffer);
+    } else {
+        cph.dlen = 0;
+    }
 
-        if(len = write(sock, (char *)&packet, sizeof(packet)) < 0) {
-            cp_log("unicast socket error: sock(%d), errno(%d), strerror(%s)", 
-                    sock, errno, strerror(errno));
-            return -1;
-        }
+    memcpy(send_buffer, &cph, sizeof(CP_PACKET_HEADER));
+    if(cph.dlen) {
+        memcpy(send_buffer + sizeof(CP_PACKET_HEADER), vbuffer, cph.dlen);
+    }
+
+    if((len = write(sock, send_buffer, sizeof(CP_PACKET_HEADER) + cph.dlen)) < 0) {
+        cp_log("unicast socket error: sock(%d), errno(%d), strerror(%s)", 
+                sock, errno, strerror(errno));
+        goto out;
+    }
+
+out:
+    if(vbuffer) {
+        free(vbuffer);
     }
 
     return len;
@@ -227,10 +243,14 @@ int cp_broadcast_message(CP_PACKET *p)
 {
     int hash, len = 0;
     struct user_list_node *node;
+    char send_buffer[1024];
+
+    memcpy(send_buffer, &p->cp_h, sizeof(CP_PACKET_HEADER));
+    memcpy(send_buffer + sizeof(CP_PACKET_HEADER), p->data, p->cp_h.dlen);
 
     for(hash = 0; hash < USER_HASH_SIZE; hash++) {
         list_for_each_entry(node, &usr_list[hash], list) {
-            if(len = write(node->sock, (char *)p, sizeof(CP_PACKET)) < 0) {
+            if(len = write(node->sock, send_buffer, sizeof(CP_PACKET_HEADER) + p->cp_h.dlen) < 0) {
                 cp_log("broadcast socket error: user(%s), sock(%d), errno(%d), strerror(%s)", 
                         node->id, node->sock, errno, strerror(errno));
             }
@@ -341,17 +361,18 @@ int cp_accept()
         return -1;
     }
 
-    //cp_unicast_message(cfd, MSG_ALAM_STATE, "Welcome to CPerl-Chat World!");
-
     return 0;
 }
 
 int cp_read_user_data(int fd)
 {
     int readn;
-    CP_PACKET rcv_packet;
+    char rcv_buffer[1024];
+    CP_PACKET packet;
 
-    readn = read(fd, (char *)&rcv_packet, 1024);
+    packet.data = NULL;
+
+    readn = read(fd, rcv_buffer, 1024);
     if (readn <= 0) {
         /* handle close clients otherwise read error */
         cp_log("closed socket connection: sock(%d), readn(%d), errno(%d), strerror(%s)", 
@@ -359,17 +380,31 @@ int cp_read_user_data(int fd)
         remove_user(fd);
 
     } else {
-        switch(rcv_packet.cp_h.state) {
+        if(readn < sizeof(CP_PACKET_HEADER)) {
+            cp_log("receive packet size small than header size..., read len(%d)\n", readn);
+            goto out;
+        }
+
+        memcpy(&packet.cp_h, rcv_buffer, sizeof(CP_PACKET_HEADER));
+        if(packet.cp_h.dlen) {
+            packet.data = (char *)malloc(packet.cp_h.dlen);
+            memcpy(packet.data, rcv_buffer + sizeof(CP_PACKET_HEADER), packet.cp_h.dlen);
+        }
+
+        if(readn != (sizeof(CP_PACKET_HEADER) + packet.cp_h.dlen)) {
+            cp_log("receive packet length strange..., read len(%d)", readn);
+            goto out;
+        }
+
+        switch(packet.cp_h.state) {
             case MSG_RECONNECT_STATE:
-                cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", 
-                        rcv_packet.cp_h.id, fd);
-                reconnect_proc(fd, &rcv_packet);
+                cp_log("user try re-connect..., update socket: user-id(%s), sock(%d)", packet.cp_h.id, fd);
+                reconnect_proc(fd, &packet);
                 break;
 
             case MSG_NEWCONNECT_STATE:
-                if(exist_usr_id(rcv_packet.cp_h.id)) {
-                    cp_log("new connect user id exists, force to close...: user-id(%s)", 
-                            rcv_packet.cp_h.id);
+                if(exist_usr_id(packet.cp_h.id)) {
+                    cp_log("new connect user id exists, force to close...: user-id(%s)", packet.cp_h.id);
                     cp_unicast_message(fd, MSG_ALAM_STATE, 
                             "ID Exists already, re-connect to server after change your ID!");
                     epoll_ctl(efd, EPOLL_CTL_DEL, fd, events);
@@ -377,24 +412,28 @@ int cp_read_user_data(int fd)
                     break;
 
                 } else {
-                    cp_log("log-in user: ver(%s), id(%s), sock(%d)", 
-                            rcv_packet.cp_h.version, rcv_packet.cp_h.id, fd);
-                    new_connect_proc(fd, &rcv_packet);
+                    cp_log("log-in user: ver(%s), id(%s), sock(%d)", packet.cp_h.version, packet.cp_h.id, fd);
+                    new_connect_proc(fd, &packet);
                 }
                 break;
 
             case MSG_DATA_STATE:
                 /* broadcast packet to all user */
-                cp_broadcast_message(&rcv_packet);
+                cp_broadcast_message(&packet);
                 break;
 
             case MSG_AVAILTEST_STATE:
                 break;
 
             default:
-                cp_log("invalid packet: sock(%d), state(%d)", fd, rcv_packet.cp_h.state);
+                cp_log("invalid state packet: sock(%d), state(%d)", fd, packet.cp_h.state);
                 break;
         }
+    }
+
+out:
+    if(packet.data) {
+        free(packet.data);
     }
 
     return readn;

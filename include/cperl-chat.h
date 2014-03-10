@@ -172,7 +172,7 @@ void cp_logout();
 void cp_exit();
 void cp_rcv_proc(CP_PACKET *p);
 int cp_sock_option();
-int cp_send_data(int type, char *id, char *data);
+int cp_send_data(int type, char *id, char *data, unsigned int data_len);
 void init_usr_list();
 void get_input_buffer(char *input_buffer);
 void set_scroll_index(int action);
