@@ -236,8 +236,9 @@ void *rcv_thread(void *data) {
                         CP_PACKET packet;
 
                         memcpy(&packet.cp_h, rcv_buffer, sizeof(CP_PACKET_HEADER));
-                        packet.data = (char *)malloc(packet.cp_h.dlen);
+                        packet.data = (char *)malloc(packet.cp_h.dlen + 1);
                         memcpy(packet.data, rcv_buffer + sizeof(CP_PACKET_HEADER), packet.cp_h.dlen);
+                        packet.data[packet.cp_h.dlen] = '\0';
                         /*
                         cp_log_ui(MSG_ERROR_STATE, "read_len:%d, ver:%s, state:%d, dlen:%d, data:%s", 
                                 read_len, packet.cp_h.version, packet.cp_h.state, packet.cp_h.dlen, packet.data);
