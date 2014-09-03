@@ -1294,7 +1294,7 @@ void get_input_buffer(char *input_buffer)
 
         } else if(ch == KEY_DC) {
             char *pull_char;
-            int buff_len = strlen(input_buffer);;
+            int buff_len = strlen(input_buffer);
 
             if(cursor > ch_cnt) {
                 continue;
