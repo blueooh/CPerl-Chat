@@ -390,7 +390,7 @@ void update_local_info_win()
         mvwprintw(win, print_y++, print_x, "Memory      : %ld MB / %ld MB", 
                 (unsigned long)memory.used/(1024*1024), (unsigned long)memory.total/(1024*1024));
     }
-
+#if 0
     // network information
     ifconf.ifc_buf = (char *) ifreq;
     ifconf.ifc_len = sizeof ifreq;
@@ -411,7 +411,7 @@ void update_local_info_win()
             }
         }
     }
-
+#endif
     first_calculate = 1;
 
     draw_win_ui(win, cw_manage[CP_LO_INFO_WIN].ui);
@@ -880,7 +880,7 @@ void cp_init_chat()
     usr_state = USER_LOGOUT_STATE;
 
     // 초기 플러그인 스크립트 명령 라인 생성
-    sprintf(plugin_cmd, "%s%s %s", INFO_SCRIPT_PATH, "naver_rank", INFO_PIPE_FILE);
+    sprintf(plugin_cmd, "%s%s %s", INFO_SCRIPT_PATH, "daum_rank", INFO_PIPE_FILE);
 
     term_y = LINES;
     term_x = COLS;
