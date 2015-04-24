@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use LWP::UserAgent;
+use Encode qw(encode decode);
+use open ':std', ':encoding(UTF-8)';
+binmode(STDOUT, ":utf8");
+
+my $top_str = '[-Daum SocialPick-]';
+my $rank_url = 'https://apis.daum.net/socialpick/search?n=10&thumbnail=y';
+my $pipe_file = $ARGV[0];
+
+my $ua = LWP::UserAgent->new;
+my $resp = $ua->get($rank_url);
+my $decode_body;
+
+if ($resp->is_success) {
+     $decode_body = $resp->decoded_content;
+}
+else {
+    die $resp->status_line;
+}
+
+my @html_body = $decode_body =~ m{<item>(.*?)</item>}gsm;
+#my @html_body = $test =~ m{<title>(.*?)</title>}gsm; 
+
+my @top_tens;
+my $i = 1;
+my @tmp;
+my @cats;
+push @top_tens, $top_str;
+
+foreach my $p (@html_body) {
+    @tmp = $p =~m{<keyword>(.*?)]]></keyword>}gsm;
+    @cats =  split /A\[/,$tmp[0];
+    push @top_tens, "$i. $cats[1]";
+    $i++;
+}
+
+my $top_ten = join('/', @top_tens);
+
+open( fileHandle, ">$pipe_file" ) || die "Failed opening.\n";
+print fileHandle "$top_ten";
+
+close( fileHandle );
+#system("echo $top_ten > $pipe_file");

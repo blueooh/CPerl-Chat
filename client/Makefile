@@ -20,8 +20,8 @@ clean:
 	rm -rf $(TARGET) $(OBJS)
 
 install:
-	cp ../script/naver_rank /usr/bin/
-	chmod 777 /usr/bin/naver_rank
+	cp ../script/daum_rank /usr/bin/
+	chmod 777 /usr/bin/daum_rank
 	cp ../script/weather /usr/bin/
 	chmod 777 /usr/bin/weather
 	cp $(TARGET) /usr/bin
