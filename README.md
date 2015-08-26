@@ -29,3 +29,5 @@ cd CPerl-Chat
 make && sudo make install
 ./client/cperl-chat
 ```
+
+TEST
